@@ -2,7 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Brahmastra Arts & Sports Club - Management System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -83,8 +85,13 @@
             50% { transform: scale(1.05); }
         }
         
+        #sidebarOverlay {
+            z-index: 998;
+        }
+        
         .sidebar {
             transition: all 0.3s ease;
+            z-index: 999;
         }
         
         .sidebar-item {
@@ -140,16 +147,240 @@
             display: none !important;
         }
         
+        /* Mobile Responsive Improvements */
         @media (max-width: 768px) {
+            body {
+                overflow-x: hidden;
+            }
+            
             .sidebar {
                 transform: translateX(-100%);
                 position: fixed;
                 z-index: 999;
                 height: 100vh;
+                width: 80% !important;
+                max-width: 280px;
             }
             
             .sidebar.open {
                 transform: translateX(0);
+            }
+            
+            /* Main content adjustments */
+            main {
+                padding: 1rem !important;
+                width: 100%;
+            }
+            
+            /* Header mobile */
+            header h1 {
+                font-size: 1.25rem !important;
+            }
+            
+            header p {
+                font-size: 0.75rem !important;
+            }
+            
+            /* Cards grid */
+            .grid {
+                grid-template-columns: 1fr !important;
+                gap: 1rem !important;
+            }
+            
+            /* Tables */
+            table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            table thead {
+                font-size: 0.75rem;
+            }
+            
+            table tbody {
+                font-size: 0.875rem;
+            }
+            
+            table th, table td {
+                padding: 0.5rem !important;
+                min-width: 100px;
+            }
+            
+            /* Buttons */
+            button {
+                font-size: 0.875rem !important;
+                padding: 0.5rem 1rem !important;
+            }
+            
+            /* Modal */
+            .modal > div {
+                width: 95% !important;
+                max-width: none !important;
+                margin: 1rem !important;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+            
+            /* Forms */
+            input, select, textarea {
+                font-size: 16px !important; /* Prevents zoom on iOS */
+            }
+            
+            /* Charts */
+            canvas {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+            
+            /* Stats cards */
+            .stat-card {
+                padding: 1rem !important;
+            }
+            
+            .stat-card h3 {
+                font-size: 0.875rem !important;
+            }
+            
+            .stat-card p {
+                font-size: 1.5rem !important;
+            }
+            
+            /* Login page */
+            #loginPage {
+                padding: 1rem !important;
+            }
+            
+            #loginPage h1 {
+                font-size: 1.5rem !important;
+            }
+            
+            #loginPage .w-16 {
+                width: 3rem !important;
+                height: 3rem !important;
+            }
+            
+            /* Action buttons container */
+            .action-buttons {
+                flex-direction: column !important;
+                gap: 0.5rem !important;
+            }
+            
+            .action-buttons button {
+                width: 100% !important;
+            }
+            
+            /* Member details view */
+            .member-details {
+                padding: 0.75rem !important;
+            }
+            
+            /* Payment history */
+            .payment-history {
+                overflow-x: auto;
+            }
+            
+            /* Dashboard metrics */
+            .metrics-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            /* Report sections */
+            .report-section {
+                padding: 1rem !important;
+            }
+            
+            /* Text sizes */
+            h2 {
+                font-size: 1.25rem !important;
+            }
+            
+            h3 {
+                font-size: 1.1rem !important;
+            }
+            
+            /* Spacing adjustments */
+            .space-y-6 > * + * {
+                margin-top: 1rem !important;
+            }
+            
+            .space-y-4 > * + * {
+                margin-top: 0.75rem !important;
+            }
+            
+            /* Glass effect cards */
+            .glass-effect {
+                padding: 1rem !important;
+            }
+        }
+        
+        /* Extra small devices */
+        @media (max-width: 480px) {
+            .sidebar {
+                width: 85% !important;
+            }
+            
+            header {
+                padding: 0.75rem !important;
+            }
+            
+            table th, table td {
+                min-width: 80px;
+                font-size: 0.75rem !important;
+            }
+            
+            button {
+                font-size: 0.75rem !important;
+                padding: 0.5rem 0.75rem !important;
+            }
+            
+            .modal > div {
+                padding: 1rem !important;
+            }
+            
+            /* Reduce padding everywhere */
+            .p-6 {
+                padding: 0.75rem !important;
+            }
+            
+            .p-4 {
+                padding: 0.5rem !important;
+            }
+            
+            .px-4 {
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+            
+            .py-3 {
+                padding-top: 0.5rem !important;
+                padding-bottom: 0.5rem !important;
+            }
+        }
+        
+        /* Landscape mobile */
+        @media (max-width: 768px) and (orientation: landscape) {
+            .sidebar {
+                width: 60% !important;
+            }
+            
+            main {
+                max-height: 100vh;
+                overflow-y: auto;
+            }
+        }
+        
+        /* Touch-friendly elements */
+        @media (hover: none) and (pointer: coarse) {
+            .sidebar-item,
+            button,
+            .table-row {
+                min-height: 44px; /* iOS recommended touch target */
+            }
+            
+            button {
+                padding: 0.75rem 1rem !important;
             }
         }
         
@@ -202,7 +433,7 @@
                 </form>
 
                 <div class="mt-6 text-center">
-                    <p class="text-gray-400 text-sm"> <span class="text-orange-400 font-semibold"></span></p>
+                    <p class="text-gray-400 text-sm">Default Admin: <span class="text-orange-400 font-semibold">brahmastra01</span></p>
                 </div>
             </div>
 
@@ -214,7 +445,10 @@
 
     <!-- ADMIN DASHBOARD -->
     <div id="adminDashboard" class="hidden min-h-screen">
-        <div class="flex">
+        <!-- Mobile Sidebar Overlay -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-black bg-opacity-50 z-998 hidden"></div>
+        
+        <div class="flex relative">
             <!-- Sidebar -->
             <aside id="sidebar" class="sidebar w-64 glass-effect p-6 flex flex-col">
                 <div class="mb-8">
@@ -1113,8 +1347,29 @@
             });
 
             // Mobile menu
-            document.getElementById('menuToggle').addEventListener('click', () => {
-                document.getElementById('sidebar').classList.toggle('open');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const menuToggle = document.getElementById('menuToggle');
+            
+            menuToggle.addEventListener('click', () => {
+                sidebar.classList.toggle('open');
+                sidebarOverlay.classList.toggle('hidden');
+            });
+            
+            // Close sidebar when clicking overlay
+            sidebarOverlay.addEventListener('click', () => {
+                sidebar.classList.remove('open');
+                sidebarOverlay.classList.add('hidden');
+            });
+            
+            // Close sidebar when clicking a menu item on mobile
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.remove('open');
+                        sidebarOverlay.classList.add('hidden');
+                    }
+                });
             });
 
             // Modals
