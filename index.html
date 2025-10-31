@@ -166,26 +166,6 @@
                 top: 0;
             }
         }
-
-        @media (max-width: 768px) {
-            aside {
-                position: absolute;
-                width: 100%;
-                height: 100%;
-                background-color: #333; /* Adjust as needed */
-                z-index: 10;
-                transition: transform 0.3s ease;
-                transform: translateX(-100%);
-            }
-
-            aside.hidden {
-                transform: translateX(0);
-            }
-
-            main {
-                margin-left: 0;
-            }
-        }
     </style>
 </head>
 <body>
@@ -1972,11 +1952,6 @@
                     initMemberDashboard();
                 }
             }
-        });
-
-        document.getElementById('menuToggle').addEventListener('click', function() {
-            const sidebar = document.querySelector('aside');
-            sidebar.classList.toggle('hidden');
         });
     </script>
 </body>
