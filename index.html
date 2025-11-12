@@ -48,8 +48,8 @@
                 </form>
 
                 <div class="mt-6 text-center">
-                    <p class="text-gray-400 text-sm">Default Admin: <span class="text-orange-400">brahmastra01</span></p>
-                    <p class="text-gray-400 text-sm">Password: <span class="text-orange-400">password</span></p>
+                    <p class="text-gray-400 text-sm"> <span class="text-orange-400"></span></p>
+                    <p class="text-gray-400 text-sm"> <span class="text-orange-400"></span></p>
                 </div>
             </div>
         </div>
@@ -209,6 +209,13 @@
                         </thead>
                         <tbody id="memberPaymentsTable"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <div class="glass rounded-lg p-6">
+                <h2 class="text-xl font-bold text-white mb-4">Monthly Expenses</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="memberExpensesContainer">
+                    <!-- Expenses will be loaded here -->
                 </div>
             </div>
         </div>
@@ -499,6 +506,7 @@
             document.getElementById('memberName').textContent = currentUser.memberName;
             document.getElementById('memberIdDisplay').textContent = currentUser.memberId;
             await loadMemberPayments();
+            await loadMemberExpenses();
         }
 
         async function loadMemberPayments() {
@@ -519,6 +527,59 @@
                 `).join('');
             } catch (error) {
                 console.error('Load member payments error:', error);
+            }
+        }
+
+        async function loadMemberExpenses() {
+            try {
+                const expenses = await apiCall('/expenses');
+                const container = document.getElementById('memberExpensesContainer');
+                
+                if (expenses.length === 0) {
+                    container.innerHTML = '<p class="text-gray-400 col-span-full text-center py-8">No expenses recorded yet</p>';
+                    return;
+                }
+
+                // Sort by most recent first
+                expenses.sort((a, b) => {
+                    if (b.year !== a.year) return b.year - a.year;
+                    return b.month - a.month;
+                });
+
+                // Show last 6 months
+                container.innerHTML = expenses.slice(0, 6).map(e => `
+                    <div class="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-white">${monthNames[e.month]} ${e.year}</h3>
+                            <div class="w-10 h-10 gradient-bg rounded-full flex items-center justify-center">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between items-center py-2 border-b border-gray-700">
+                                <span class="text-gray-400 text-sm">Electricity</span>
+                                <span class="text-white font-semibold">₹${e.electricityBill || 0}</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-gray-700">
+                                <span class="text-gray-400 text-sm">Internet</span>
+                                <span class="text-white font-semibold">₹${e.internetBill || 0}</span>
+                            </div>
+                            <div class="flex justify-between items-center py-2 border-b border-gray-700">
+                                <span class="text-gray-400 text-sm">Miscellaneous</span>
+                                <span class="text-white font-semibold">₹${e.miscellaneous || 0}</span>
+                            </div>
+                            <div class="flex justify-between items-center pt-3">
+                                <span class="text-orange-400 font-bold">Total</span>
+                                <span class="text-2xl text-orange-400 font-bold">₹${e.totalExpense || 0}</span>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                console.error('Load member expenses error:', error);
+                document.getElementById('memberExpensesContainer').innerHTML = '<p class="text-red-400 col-span-full text-center py-8">Failed to load expenses</p>';
             }
         }
 
