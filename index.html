@@ -3,79 +3,643 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brahmastra Club - Updated</title>
+    <title>Brahmastra Club Management</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 100%); min-height: 100vh; }
+        body { 
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d1810 100%); 
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, sans-serif;
+        }
         .gradient-bg { background: linear-gradient(135deg, #ff6b00 0%, #ff8c00 100%); }
+        .glass { background: rgba(0, 0, 0, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 107, 0, 0.2); }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-md">
-        <div class="bg-gray-900 rounded-2xl p-8 shadow-2xl">
-            <h1 class="text-3xl font-bold text-white mb-6 text-center">Brahmastra Club</h1>
-            
-            <form id="loginForm" class="space-y-4">
-                <div>
-                    <label class="block text-sm text-gray-300 mb-2">User ID</label>
-                    <input type="text" id="userId" required class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+<body>
+
+    <!-- LOGIN PAGE -->
+    <div id="loginPage" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 rounded-full gradient-bg mb-4">
+                    <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
                 </div>
-                <div>
-                    <label class="block text-sm text-gray-300 mb-2">Password</label>
-                    <input type="password" id="password" required class="w-full px-4 py-3 bg-gray-800 border border-gray-700 rounded-lg text-white">
+                <h1 class="text-3xl font-bold text-white mb-2">Brahmastra Arts & Sports Club</h1>
+                <p class="text-orange-400">Vakkom | Member Portal</p>
+            </div>
+
+            <div class="glass rounded-2xl p-8">
+                <h2 class="text-2xl font-bold text-white mb-6 text-center">Welcome Back</h2>
+                
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">User ID</label>
+                        <input type="text" id="userId" required class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" id="password" required class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white focus:border-orange-500 focus:outline-none">
+                    </div>
+                    <div id="loginError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-lg text-sm"></div>
+                    <button type="submit" class="w-full gradient-bg text-white font-semibold py-3 rounded-lg hover:opacity-90 transition">Login</button>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <p class="text-gray-400 text-sm">Default Admin: <span class="text-orange-400">brahmastra01</span></p>
+                    <p class="text-gray-400 text-sm">Password: <span class="text-orange-400">password</span></p>
                 </div>
-                <div id="error" class="hidden bg-red-900/50 text-red-200 px-4 py-3 rounded-lg text-sm"></div>
-                <button type="submit" class="w-full gradient-bg text-white font-semibold py-3 rounded-lg">Login</button>
-            </form>
-            
-            <div id="result" class="hidden mt-6 p-4 bg-green-900/50 rounded-lg">
-                <p class="text-green-200">Login Successful!</p>
-                <p class="text-white mt-2">Welcome, <span id="userName"></span></p>
-                <p class="text-gray-400 text-sm">Role: <span id="userRole"></span></p>
             </div>
         </div>
     </div>
 
-    <script>
-        // API Configuration - THIS IS THE KEY CHANGE!
-        const API_BASE_URL = 'https://web-production-3987.up.railway.app/api';
+    <!-- ADMIN DASHBOARD -->
+    <div id="adminDashboard" class="hidden min-h-screen p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <header class="glass rounded-lg p-6 mb-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">Admin Dashboard</h1>
+                    <p class="text-gray-400">Welcome, <span id="adminName"></span></p>
+                </div>
+                <button id="logoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white">Logout</button>
+            </header>
 
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+                <div class="glass rounded-lg p-6">
+                    <p class="text-gray-400 text-sm">Total Members</p>
+                    <h3 class="text-3xl font-bold text-white mt-2" id="totalMembers">0</h3>
+                </div>
+                <div class="glass rounded-lg p-6">
+                    <p class="text-gray-400 text-sm">Monthly Collection</p>
+                    <h3 class="text-3xl font-bold text-green-400 mt-2">₹<span id="monthlyCollection">0</span></h3>
+                </div>
+                <div class="glass rounded-lg p-6">
+                    <p class="text-gray-400 text-sm">Monthly Expenses</p>
+                    <h3 class="text-3xl font-bold text-red-400 mt-2">₹<span id="monthlyExpenses">0</span></h3>
+                </div>
+                <div class="glass rounded-lg p-6">
+                    <p class="text-gray-400 text-sm">Net Balance</p>
+                    <h3 class="text-3xl font-bold text-orange-400 mt-2">₹<span id="netBalance">0</span></h3>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="glass rounded-lg p-2 mb-6 flex gap-2 overflow-x-auto">
+                <button class="tab-btn active px-4 py-2 rounded-lg text-white" data-tab="members">Members</button>
+                <button class="tab-btn px-4 py-2 rounded-lg text-gray-400" data-tab="payments">Payments</button>
+                <button class="tab-btn px-4 py-2 rounded-lg text-gray-400" data-tab="expenses">Expenses</button>
+            </div>
+
+            <!-- Members Section -->
+            <div id="membersTab" class="tab-content glass rounded-lg p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white">Members</h2>
+                    <button id="addMemberBtn" class="gradient-bg px-6 py-2 rounded-lg text-white">+ Add Member</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4 text-gray-400">ID</th>
+                                <th class="text-left py-3 px-4 text-gray-400">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400">Role</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Payments Section -->
+            <div id="paymentsTab" class="tab-content glass rounded-lg p-6 hidden">
+                <h2 class="text-xl font-bold text-white mb-6">Mark Monthly Payments</h2>
+                
+                <div class="grid grid-cols-2 gap-4 mb-6">
+                    <div>
+                        <label class="block text-gray-400 mb-2">Month</label>
+                        <select id="paymentMonth" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-2">Year</label>
+                        <select id="paymentYear" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"></select>
+                    </div>
+                </div>
+
+                <button id="savePaymentsBtn" class="gradient-bg px-6 py-2 rounded-lg text-white mb-4">Save Changes</button>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4 text-gray-400">Member</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Amount</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Expenses Section -->
+            <div id="expensesTab" class="tab-content glass rounded-lg p-6 hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-xl font-bold text-white">Monthly Expenses</h2>
+                    <button id="addExpenseBtn" class="gradient-bg px-6 py-2 rounded-lg text-white">+ Add Expense</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4 text-gray-400">Month/Year</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Electricity</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Internet</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Misc</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Total</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MEMBER DASHBOARD -->
+    <div id="memberDashboard" class="hidden min-h-screen p-6">
+        <div class="max-w-4xl mx-auto">
+            <header class="glass rounded-lg p-6 mb-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-white">Welcome, <span id="memberName"></span></h1>
+                    <p class="text-gray-400">Member ID: <span id="memberIdDisplay"></span></p>
+                </div>
+                <button id="memberLogoutBtn" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white">Logout</button>
+            </header>
+
+            <div class="glass rounded-lg p-6 mb-6">
+                <h2 class="text-xl font-bold text-white mb-4">Payment History</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-gray-700">
+                                <th class="text-left py-3 px-4 text-gray-400">Month</th>
+                                <th class="text-left py-3 px-4 text-gray-400">Year</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Amount</th>
+                                <th class="text-center py-3 px-4 text-gray-400">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memberPaymentsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4">
+        <div class="glass rounded-lg p-8 w-full max-w-md">
+            <h3 class="text-2xl font-bold text-white mb-6">Add New Member</h3>
+            <form id="addMemberForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2">Member ID</label>
+                    <input type="text" id="newMemberId" required class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Name</label>
+                    <input type="text" id="newMemberName" required class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Password</label>
+                    <input type="password" id="newMemberPassword" required class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Role</label>
+                    <select id="newMemberRole" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 gradient-bg py-2 rounded-lg text-white">Add</button>
+                    <button type="button" onclick="closeModal('addMemberModal')" class="flex-1 bg-gray-700 py-2 rounded-lg text-white">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div id="addExpenseModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4">
+        <div class="glass rounded-lg p-8 w-full max-w-md">
+            <h3 class="text-2xl font-bold text-white mb-6">Add Expense</h3>
+            <form id="addExpenseForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-400 mb-2">Month</label>
+                        <select id="expenseMonth" required class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                            <option value="1">January</option>
+                            <option value="2">February</option>
+                            <option value="3">March</option>
+                            <option value="4">April</option>
+                            <option value="5">May</option>
+                            <option value="6">June</option>
+                            <option value="7">July</option>
+                            <option value="8">August</option>
+                            <option value="9">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-2">Year</label>
+                        <select id="expenseYear" required class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white"></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Electricity Bill (₹)</label>
+                    <input type="number" id="electricityBill" min="0" value="0" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Internet Bill (₹)</label>
+                    <input type="number" id="internetBill" min="0" value="0" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Miscellaneous (₹)</label>
+                    <input type="number" id="miscellaneousBill" min="0" value="0" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 gradient-bg py-2 rounded-lg text-white">Add</button>
+                    <button type="button" onclick="closeModal('addExpenseModal')" class="flex-1 bg-gray-700 py-2 rounded-lg text-white">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ==================== API CONFIGURATION ====================
+        const API_BASE_URL = 'https://web-production-3987.up.railway.app/api';
+        let authToken = localStorage.getItem('authToken');
+        let currentUser = null;
+
+        // API Helper
+        async function apiCall(endpoint, options = {}) {
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(authToken && { 'Authorization': `Bearer ${authToken}` })
+                },
+                ...options
+            };
+
+            const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || 'Request failed');
+            return data;
+        }
+
+        // Month names
+        const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        // ==================== LOGIN ====================
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             const userId = document.getElementById('userId').value;
             const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error');
-            const resultDiv = document.getElementById('result');
+            const errorDiv = document.getElementById('loginError');
             
             errorDiv.classList.add('hidden');
-            resultDiv.classList.add('hidden');
 
             try {
-                // Call your Railway backend
-                const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                const data = await apiCall('/auth/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId, password })
                 });
 
-                const data = await response.json();
+                authToken = data.token;
+                currentUser = data.user;
+                localStorage.setItem('authToken', authToken);
+                localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-                if (!response.ok) {
-                    throw new Error(data.error || 'Login failed');
+                document.getElementById('loginPage').classList.add('hidden');
+                
+                if (currentUser.role === 'admin') {
+                    document.getElementById('adminDashboard').classList.remove('hidden');
+                    initAdmin();
+                } else {
+                    document.getElementById('memberDashboard').classList.remove('hidden');
+                    initMember();
                 }
-
-                // Success!
-                document.getElementById('userName').textContent = data.user.memberName;
-                document.getElementById('userRole').textContent = data.user.role;
-                resultDiv.classList.remove('hidden');
-                
-                console.log('Token:', data.token);
-                console.log('User:', data.user);
-                
             } catch (error) {
                 errorDiv.textContent = error.message;
                 errorDiv.classList.remove('hidden');
+            }
+        });
+
+        // ==================== ADMIN FUNCTIONS ====================
+        async function initAdmin() {
+            document.getElementById('adminName').textContent = currentUser.memberName;
+            populateYears();
+            await loadDashboard();
+            await loadMembers();
+            setupTabs();
+        }
+
+        async function loadDashboard() {
+            try {
+                const data = await apiCall('/dashboard/stats');
+                document.getElementById('totalMembers').textContent = data.totalMembers;
+                document.getElementById('monthlyCollection').textContent = data.monthlyCollection;
+                document.getElementById('monthlyExpenses').textContent = data.monthlyExpenses;
+                document.getElementById('netBalance').textContent = data.netBalance;
+            } catch (error) {
+                console.error('Dashboard error:', error);
+            }
+        }
+
+        async function loadMembers() {
+            try {
+                const members = await apiCall('/members');
+                const tbody = document.getElementById('membersTable');
+                tbody.innerHTML = members.map(m => `
+                    <tr class="border-b border-gray-800">
+                        <td class="py-3 px-4 text-white">${m.memberId}</td>
+                        <td class="py-3 px-4 text-white">${m.memberName}</td>
+                        <td class="py-3 px-4 text-white">${m.role}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="deleteMember('${m.memberId}')" class="text-red-400 hover:text-red-300">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Load members error:', error);
+            }
+        }
+
+        async function loadPayments() {
+            const month = parseInt(document.getElementById('paymentMonth').value);
+            const year = parseInt(document.getElementById('paymentYear').value);
+            
+            try {
+                const members = await apiCall('/members');
+                const tbody = document.getElementById('paymentsTable');
+                tbody.innerHTML = members.map(m => {
+                    const payment = m.monthlyPayments?.find(p => p.month === month && p.year === year);
+                    const isPaid = payment?.status === 'paid';
+                    return `
+                        <tr class="border-b border-gray-800">
+                            <td class="py-3 px-4 text-white">${m.memberName}</td>
+                            <td class="py-3 px-4 text-center text-white">₹100</td>
+                            <td class="py-3 px-4 text-center">
+                                <label>
+                                    <input type="checkbox" class="payment-check" data-member="${m.memberId}" ${isPaid ? 'checked' : ''}>
+                                    <span class="ml-2 ${isPaid ? 'text-green-400' : 'text-red-400'}">${isPaid ? 'Paid' : 'Not Paid'}</span>
+                                </label>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Load payments error:', error);
+            }
+        }
+
+        async function savePayments() {
+            const month = parseInt(document.getElementById('paymentMonth').value);
+            const year = parseInt(document.getElementById('paymentYear').value);
+            
+            const payments = [];
+            document.querySelectorAll('.payment-check').forEach(cb => {
+                payments.push({
+                    memberId: cb.dataset.member,
+                    status: cb.checked ? 'paid' : 'not_paid',
+                    amount: 100
+                });
+            });
+
+            try {
+                await apiCall('/payments', {
+                    method: 'POST',
+                    body: JSON.stringify({ month, year, payments })
+                });
+                alert('Payments saved!');
+                await loadDashboard();
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function loadExpenses() {
+            try {
+                const expenses = await apiCall('/expenses');
+                const tbody = document.getElementById('expensesTable');
+                tbody.innerHTML = expenses.map(e => `
+                    <tr class="border-b border-gray-800">
+                        <td class="py-3 px-4 text-white">${monthNames[e.month]} ${e.year}</td>
+                        <td class="py-3 px-4 text-center text-white">₹${e.electricityBill}</td>
+                        <td class="py-3 px-4 text-center text-white">₹${e.internetBill}</td>
+                        <td class="py-3 px-4 text-center text-white">₹${e.miscellaneous}</td>
+                        <td class="py-3 px-4 text-center text-green-400">₹${e.totalExpense}</td>
+                        <td class="py-3 px-4 text-center">
+                            <button onclick="deleteExpense('${e._id}')" class="text-red-400 hover:text-red-300">Delete</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Load expenses error:', error);
+            }
+        }
+
+        async function deleteMember(memberId) {
+            if (memberId === 'brahmastra01') return alert('Cannot delete main admin!');
+            if (!confirm('Delete this member?')) return;
+            
+            try {
+                await apiCall(`/members/${memberId}`, { method: 'DELETE' });
+                await loadMembers();
+                alert('Member deleted!');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        async function deleteExpense(id) {
+            if (!confirm('Delete this expense?')) return;
+            
+            try {
+                await apiCall(`/expenses/${id}`, { method: 'DELETE' });
+                await loadExpenses();
+                alert('Expense deleted!');
+            } catch (error) {
+                alert(error.message);
+            }
+        }
+
+        // ==================== MEMBER FUNCTIONS ====================
+        async function initMember() {
+            document.getElementById('memberName').textContent = currentUser.memberName;
+            document.getElementById('memberIdDisplay').textContent = currentUser.memberId;
+            await loadMemberPayments();
+        }
+
+        async function loadMemberPayments() {
+            try {
+                const data = await apiCall('/members/me');
+                const tbody = document.getElementById('memberPaymentsTable');
+                const payments = data.monthlyPayments || [];
+                
+                tbody.innerHTML = payments.map(p => `
+                    <tr class="border-b border-gray-800">
+                        <td class="py-3 px-4 text-white">${monthNames[p.month]}</td>
+                        <td class="py-3 px-4 text-white">${p.year}</td>
+                        <td class="py-3 px-4 text-center text-white">₹${p.amount || 100}</td>
+                        <td class="py-3 px-4 text-center">
+                            <span class="${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Load member payments error:', error);
+            }
+        }
+
+        // ==================== FORMS ====================
+        document.getElementById('addMemberForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await apiCall('/members', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        memberId: document.getElementById('newMemberId').value,
+                        memberName: document.getElementById('newMemberName').value,
+                        password: document.getElementById('newMemberPassword').value,
+                        role: document.getElementById('newMemberRole').value
+                    })
+                });
+                closeModal('addMemberModal');
+                e.target.reset();
+                await loadMembers();
+                alert('Member added!');
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                await apiCall('/expenses', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        month: parseInt(document.getElementById('expenseMonth').value),
+                        year: parseInt(document.getElementById('expenseYear').value),
+                        electricityBill: parseFloat(document.getElementById('electricityBill').value) || 0,
+                        internetBill: parseFloat(document.getElementById('internetBill').value) || 0,
+                        miscellaneous: parseFloat(document.getElementById('miscellaneousBill').value) || 0
+                    })
+                });
+                closeModal('addExpenseModal');
+                e.target.reset();
+                await loadExpenses();
+                alert('Expense added!');
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // ==================== UI HELPERS ====================
+        function setupTabs() {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.tab-btn').forEach(b => {
+                        b.classList.remove('active', 'gradient-bg');
+                        b.classList.add('text-gray-400');
+                    });
+                    btn.classList.add('active', 'gradient-bg');
+                    btn.classList.remove('text-gray-400');
+                    
+                    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+                    document.getElementById(btn.dataset.tab + 'Tab').classList.remove('hidden');
+                    
+                    if (btn.dataset.tab === 'payments') loadPayments();
+                    if (btn.dataset.tab === 'expenses') loadExpenses();
+                });
+            });
+        }
+
+        function populateYears() {
+            const year = new Date().getFullYear();
+            const selects = ['paymentYear', 'expenseYear'];
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                if (select) {
+                    for (let y = 2024; y <= year + 1; y++) {
+                        select.innerHTML += `<option value="${y}" ${y === year ? 'selected' : ''}>${y}</option>`;
+                    }
+                }
+            });
+            document.getElementById('paymentMonth').value = new Date().getMonth() + 1;
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        // Event listeners
+        document.getElementById('addMemberBtn').addEventListener('click', () => document.getElementById('addMemberModal').classList.remove('hidden'));
+        document.getElementById('addExpenseBtn').addEventListener('click', () => document.getElementById('addExpenseModal').classList.remove('hidden'));
+        document.getElementById('savePaymentsBtn').addEventListener('click', savePayments);
+        document.getElementById('paymentMonth').addEventListener('change', loadPayments);
+        document.getElementById('paymentYear').addEventListener('change', loadPayments);
+        document.getElementById('logoutBtn').addEventListener('click', logout);
+        document.getElementById('memberLogoutBtn').addEventListener('click', logout);
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        // ==================== INIT ====================
+        window.addEventListener('load', async () => {
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('currentUser');
+            
+            if (token && user) {
+                authToken = token;
+                currentUser = JSON.parse(user);
+                document.getElementById('loginPage').classList.add('hidden');
+                
+                try {
+                    if (currentUser.role === 'admin') {
+                        document.getElementById('adminDashboard').classList.remove('hidden');
+                        await initAdmin();
+                    } else {
+                        document.getElementById('memberDashboard').classList.remove('hidden');
+                        await initMember();
+                    }
+                } catch (error) {
+                    localStorage.clear();
+                    location.reload();
+                }
             }
         });
     </script>
