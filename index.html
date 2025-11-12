@@ -222,7 +222,7 @@
     </div>
 
     <!-- Add Member Modal -->
-    <div id="addMemberModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4">
+    <div id="addMemberModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
         <div class="glass rounded-lg p-8 w-full max-w-md">
             <h3 class="text-2xl font-bold text-white mb-6">Add New Member</h3>
             <form id="addMemberForm" class="space-y-4">
@@ -253,8 +253,43 @@
         </div>
     </div>
 
+    <!-- Edit Member Modal -->
+    <div id="editMemberModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-lg p-8 w-full max-w-md">
+            <h3 class="text-2xl font-bold text-white mb-6">Edit Member</h3>
+            <form id="editMemberForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2">Member ID</label>
+                    <input type="text" id="editMemberId" disabled class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Name</label>
+                    <input type="text" id="editMemberName" required class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Password (Leave blank to keep current)</label>
+                    <input type="password" id="editMemberPassword" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2">Role</label>
+                    <select id="editMemberRole" class="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div id="editWarning" class="bg-yellow-900/50 border border-yellow-600 text-yellow-200 px-4 py-3 rounded-lg text-sm hidden">
+                    You are about to change this user's admin status. This action will affect their access permissions.
+                </div>
+                <div class="flex gap-4">
+                    <button type="submit" class="flex-1 gradient-bg py-2 rounded-lg text-white">Save Changes</button>
+                    <button type="button" onclick="closeModal('editMemberModal')" class="flex-1 bg-gray-700 py-2 rounded-lg text-white">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Add Expense Modal -->
-    <div id="addExpenseModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4">
+    <div id="addExpenseModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50">
         <div class="glass rounded-lg p-8 w-full max-w-md">
             <h3 class="text-2xl font-bold text-white mb-6">Add Expense</h3>
             <form id="addExpenseForm" class="space-y-4">
@@ -306,6 +341,7 @@
         const API_BASE_URL = 'https://web-production-3987.up.railway.app/api';
         let authToken = localStorage.getItem('authToken');
         let currentUser = null;
+        let currentEditingMember = null;
 
         // API Helper
         async function apiCall(endpoint, options = {}) {
@@ -391,9 +427,18 @@
                     <tr class="border-b border-gray-800">
                         <td class="py-3 px-4 text-white">${m.memberId}</td>
                         <td class="py-3 px-4 text-white">${m.memberName}</td>
-                        <td class="py-3 px-4 text-white">${m.role}</td>
-                        <td class="py-3 px-4 text-center">
-                            <button onclick="deleteMember('${m.memberId}')" class="text-red-400 hover:text-red-300">Delete</button>
+                        <td class="py-3 px-4">
+                            <span class="px-3 py-1 rounded-full text-sm ${m.role === 'admin' ? 'bg-orange-900/50 text-orange-300' : 'bg-blue-900/50 text-blue-300'}">
+                                ${m.role}
+                            </span>
+                        </td>
+                        <td class="py-3 px-4 text-center space-x-2">
+                            ${m.memberId !== 'brahmastra01' ? `
+                                <button onclick="openEditModal('${m.memberId}', '${m.memberName}', '${m.role}')" class="text-blue-400 hover:text-blue-300 px-3 py-1 bg-blue-900/30 rounded">Edit</button>
+                                <button onclick="deleteMember('${m.memberId}')" class="text-red-400 hover:text-red-300 px-3 py-1 bg-red-900/30 rounded">Delete</button>
+                            ` : `
+                                <span class="text-gray-500 text-sm">Main Admin</span>
+                            `}
                         </td>
                     </tr>
                 `).join('');
@@ -417,7 +462,7 @@
                             <td class="py-3 px-4 text-white">${m.memberName}</td>
                             <td class="py-3 px-4 text-center text-white">₹100</td>
                             <td class="py-3 px-4 text-center">
-                                <label>
+                                <label class="flex items-center justify-center cursor-pointer">
                                     <input type="checkbox" class="payment-check" data-member="${m.memberId}" ${isPaid ? 'checked' : ''}>
                                     <span class="ml-2 ${isPaid ? 'text-green-400' : 'text-red-400'}">${isPaid ? 'Paid' : 'Not Paid'}</span>
                                 </label>
@@ -476,9 +521,72 @@
             }
         }
 
+        function openEditModal(memberId, memberName, role) {
+            currentEditingMember = { memberId, memberName, role };
+            document.getElementById('editMemberId').value = memberId;
+            document.getElementById('editMemberName').value = memberName;
+            document.getElementById('editMemberRole').value = role;
+            document.getElementById('editMemberPassword').value = '';
+            
+            // Show warning if changing role
+            const roleSelect = document.getElementById('editMemberRole');
+            const warning = document.getElementById('editWarning');
+            roleSelect.addEventListener('change', () => {
+                if (roleSelect.value !== role) {
+                    warning.classList.remove('hidden');
+                } else {
+                    warning.classList.add('hidden');
+                }
+            });
+            
+            document.getElementById('editMemberModal').classList.remove('hidden');
+        }
+
+        async function updateMember() {
+            const memberId = document.getElementById('editMemberId').value;
+            const memberName = document.getElementById('editMemberName').value;
+            const password = document.getElementById('editMemberPassword').value;
+            const role = document.getElementById('editMemberRole').value;
+
+            if (!memberName.trim()) {
+                alert('Member name cannot be empty');
+                return;
+            }
+
+            try {
+                const updateData = {
+                    memberName,
+                    role
+                };
+                
+                if (password.trim()) {
+                    updateData.password = password;
+                }
+
+                await apiCall(`/members/${memberId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(updateData)
+                });
+
+                closeModal('editMemberModal');
+                await loadMembers();
+                alert('Member updated successfully!');
+                
+                // If admin removed their own admin status, log them out
+                if (currentUser.memberId === memberId && role === 'member' && currentUser.role === 'admin') {
+                    setTimeout(() => {
+                        alert('Your admin access has been revoked. You will be logged out.');
+                        logout();
+                    }, 1000);
+                }
+            } catch (error) {
+                alert('Error updating member: ' + error.message);
+            }
+        }
+
         async function deleteMember(memberId) {
             if (memberId === 'brahmastra01') return alert('Cannot delete main admin!');
-            if (!confirm('Delete this member?')) return;
+            if (!confirm('Delete this member? This action cannot be undone.')) return;
             
             try {
                 await apiCall(`/members/${memberId}`, { method: 'DELETE' });
@@ -540,13 +648,11 @@
                     return;
                 }
 
-                // Sort by most recent first
                 expenses.sort((a, b) => {
                     if (b.year !== a.year) return b.year - a.year;
                     return b.month - a.month;
                 });
 
-                // Show last 6 months
                 container.innerHTML = expenses.slice(0, 6).map(e => `
                     <div class="bg-gray-800/50 rounded-lg p-6 border border-gray-700">
                         <div class="flex items-center justify-between mb-4">
@@ -603,6 +709,11 @@
             } catch (error) {
                 alert(error.message);
             }
+        });
+
+        document.getElementById('editMemberForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await updateMember();
         });
 
         document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
