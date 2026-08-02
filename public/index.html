@@ -55,6 +55,7 @@
         .animate-slide-in { animation: slideInRight 0.35s ease both; }
         .stagger-1 { animation-delay: .05s; } .stagger-2 { animation-delay: .1s; }
         .stagger-3 { animation-delay: .15s; } .stagger-4 { animation-delay: .2s; }
+        .stagger-5 { animation-delay: .25s; }
 
         .card-hover { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
         .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); border-color: rgba(255,122,26,0.35); }
@@ -191,6 +192,14 @@
                 </div>
             </div>
 
+            <div class="glass rounded-2xl p-4 sm:p-5 mb-5 shadow-xl animate-fade-in-up flex items-center gap-4">
+                <img src="bijin.jpg" alt="Bijin" class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl object-cover border-2 border-orange-500/40 shrink-0">
+                <div class="min-w-0">
+                    <p class="gradient-text font-bold text-sm sm:text-base leading-snug">Congratulations, Bijin!</p>
+                    <p class="text-gray-300 text-xs sm:text-sm mt-0.5">on securing SSC CGL (Income Tax Department)</p>
+                </div>
+            </div>
+
             <div class="glass rounded-3xl p-6 sm:p-8 shadow-2xl">
                 <h2 class="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Welcome Back</h2>
 
@@ -209,6 +218,13 @@
 
                 <div class="mt-6 text-center">
                     <button id="showRegisterBtn" class="text-orange-400 hover:text-orange-300 text-sm font-medium transition">New member? Register here</button>
+                </div>
+
+                <div class="mt-4 text-center">
+                    <a href="https://maps.app.goo.gl/Va12H4q1SjGGA7FH9" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1.5 text-gray-400 hover:text-orange-400 text-sm transition">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        View Club Location on Map
+                    </a>
                 </div>
             </div>
         </div>
@@ -698,6 +714,38 @@
                 <div class="mt-5">
                     <h3 class="text-white font-semibold mb-3 text-sm">Top Scorers</h3>
                     <div class="space-y-2" id="gameLeaderboard"></div>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 animate-fade-in-up stagger-5">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="icon-badge gradient-bg shrink-0">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h2 class="text-lg sm:text-xl font-bold text-white">Stump Dash</h2>
+                        <p class="text-gray-500 text-xs">Jump the ball over the stumps. Tap, click, or press Space.</p>
+                    </div>
+                </div>
+
+                <div class="bg-black/30 border border-white/10 rounded-2xl p-4 sm:p-6">
+                    <div class="relative">
+                        <canvas id="dinoCanvas" width="600" height="200" class="w-full h-auto rounded-xl bg-black/40 block"></canvas>
+                        <div id="dinoScoreOverlay" class="absolute top-2 right-3 text-white font-bold text-sm">0</div>
+                        <div id="dinoIntroOverlay" class="absolute inset-0 flex items-center justify-center">
+                            <button id="dinoStartBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white font-medium transition btn-pop shadow-lg shadow-orange-500/20">Start</button>
+                        </div>
+                        <div id="dinoOverOverlay" class="hidden absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/60 rounded-xl">
+                            <p class="text-white font-bold text-lg">Out! Score: <span id="dinoFinalScore">0</span></p>
+                            <button id="dinoRestartBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white font-medium transition btn-pop shadow-lg shadow-orange-500/20">Play Again</button>
+                        </div>
+                    </div>
+                    <button id="dinoJumpBtn" class="hidden w-full mt-4 gradient-bg py-3 rounded-xl text-white font-bold text-lg transition btn-pop shadow-lg shadow-orange-500/20">JUMP</button>
+                </div>
+
+                <div class="mt-5">
+                    <h3 class="text-white font-semibold mb-3 text-sm">Top Scorers</h3>
+                    <div class="space-y-2" id="dinoLeaderboard"></div>
                 </div>
             </div>
         </div>

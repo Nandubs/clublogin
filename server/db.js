@@ -171,6 +171,7 @@ db.ready = (async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       member_id TEXT NOT NULL REFERENCES members(member_id) ON DELETE CASCADE,
       score INTEGER NOT NULL DEFAULT 0,
+      game TEXT NOT NULL DEFAULT 'six_hitter',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -193,6 +194,7 @@ db.ready = (async () => {
   ensureColumn('expenses', 'rent', 'REAL NOT NULL DEFAULT 0');
   ensureColumn('expenses', 'amount_from_abroad', 'REAL NOT NULL DEFAULT 0');
   ensureColumn('payments', 'reminded_at', 'TEXT');
+  ensureColumn('game_scores', 'game', "TEXT NOT NULL DEFAULT 'six_hitter'");
 
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
   if (memberCount === 0) {

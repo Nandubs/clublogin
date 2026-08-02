@@ -828,7 +828,7 @@ async function initMember() {
     document.getElementById('memberName').textContent = currentUser.memberName;
     document.getElementById('memberIdDisplay').textContent = currentUser.memberId;
     populateYears();
-    await Promise.all([loadMemberDashboardStats(), loadMemberPayments(), loadMemberExpenses(), loadDirectory(), loadGameLeaderboard()]);
+    await Promise.all([loadMemberDashboardStats(), loadMemberPayments(), loadMemberExpenses(), loadDirectory(), loadGameLeaderboard(), loadDinoLeaderboard()]);
 }
 
 async function loadMemberDashboardStats() {
@@ -1522,7 +1522,7 @@ async function endGame() {
     gameState = null;
 
     try {
-        await apiCall('/game/score', { method: 'POST', body: JSON.stringify({ score: finalScore }) });
+        await apiCall('/game/score', { method: 'POST', body: JSON.stringify({ score: finalScore, game: 'six_hitter' }) });
     } catch (error) {
         console.error('Save game score error:', error);
     }
@@ -1559,6 +1559,183 @@ async function loadGameLeaderboard() {
 document.getElementById('gameStartBtn').addEventListener('click', startGame);
 document.getElementById('gamePlayAgainBtn').addEventListener('click', startGame);
 document.getElementById('gameSwingBtn').addEventListener('click', swingBat);
+
+// ==================== STUMP DASH GAME ====================
+const DINO_GRAVITY = 2200; // px/s^2, in canvas coordinate space
+const DINO_JUMP_VELOCITY = -750; // px/s
+const DINO_GROUND_Y = 160; // y-coordinate of the ball's resting center
+const DINO_BALL_X = 60;
+const DINO_BALL_RADIUS = 14;
+const DINO_INITIAL_SPEED = 260; // px/s
+const DINO_MAX_SPEED = 620;
+const DINO_SPEED_RAMP = 8; // px/s gained per second survived
+
+let dinoState = null;
+
+function dinoCanvasCtx() {
+    const canvas = document.getElementById('dinoCanvas');
+    return { canvas, ctx: canvas.getContext('2d') };
+}
+
+function startDinoGame() {
+    document.getElementById('dinoIntroOverlay').classList.add('hidden');
+    document.getElementById('dinoOverOverlay').classList.add('hidden');
+    document.getElementById('dinoJumpBtn').classList.remove('hidden');
+    document.getElementById('dinoScoreOverlay').textContent = '0';
+
+    dinoState = {
+        y: DINO_GROUND_Y,
+        vy: 0,
+        jumping: false,
+        obstacles: [],
+        speed: DINO_INITIAL_SPEED,
+        elapsed: 0,
+        lastSpawn: 0,
+        nextSpawnIn: 1.2 + Math.random(),
+        score: 0,
+        running: true,
+        lastTimestamp: null,
+        rafId: null
+    };
+
+    dinoState.rafId = requestAnimationFrame(dinoTick);
+}
+
+function dinoJump() {
+    if (!dinoState || !dinoState.running || dinoState.jumping) return;
+    dinoState.vy = DINO_JUMP_VELOCITY;
+    dinoState.jumping = true;
+}
+
+function dinoTick(timestamp) {
+    if (!dinoState || !dinoState.running) return;
+    if (dinoState.lastTimestamp === null) dinoState.lastTimestamp = timestamp;
+    const dt = Math.min((timestamp - dinoState.lastTimestamp) / 1000, 0.05);
+    dinoState.lastTimestamp = timestamp;
+    dinoState.elapsed += dt;
+
+    dinoState.vy += DINO_GRAVITY * dt;
+    dinoState.y += dinoState.vy * dt;
+    if (dinoState.y >= DINO_GROUND_Y) {
+        dinoState.y = DINO_GROUND_Y;
+        dinoState.vy = 0;
+        dinoState.jumping = false;
+    }
+
+    dinoState.speed = Math.min(DINO_MAX_SPEED, DINO_INITIAL_SPEED + dinoState.elapsed * DINO_SPEED_RAMP);
+
+    const { canvas, ctx } = dinoCanvasCtx();
+
+    dinoState.lastSpawn += dt;
+    if (dinoState.lastSpawn >= dinoState.nextSpawnIn) {
+        dinoState.lastSpawn = 0;
+        dinoState.nextSpawnIn = 1 + Math.random() * 1.3;
+        dinoState.obstacles.push({ x: canvas.width, width: 14, height: 30 + Math.random() * 20 });
+    }
+
+    dinoState.obstacles.forEach(o => { o.x -= dinoState.speed * dt; });
+    dinoState.obstacles = dinoState.obstacles.filter(o => o.x + o.width > 0);
+
+    const ballLeft = DINO_BALL_X - DINO_BALL_RADIUS;
+    const ballRight = DINO_BALL_X + DINO_BALL_RADIUS;
+    const ballTop = dinoState.y - DINO_BALL_RADIUS;
+    const ballBottom = dinoState.y + DINO_BALL_RADIUS;
+
+    for (const o of dinoState.obstacles) {
+        const oTop = DINO_GROUND_Y + DINO_BALL_RADIUS - o.height;
+        const oBottom = DINO_GROUND_Y + DINO_BALL_RADIUS;
+        if (ballRight > o.x && ballLeft < o.x + o.width && ballBottom > oTop && ballTop < oBottom) {
+            dinoGameOver();
+            return;
+        }
+    }
+
+    dinoState.score = Math.floor(dinoState.elapsed * 10);
+    document.getElementById('dinoScoreOverlay').textContent = dinoState.score;
+
+    dinoDraw(ctx, canvas);
+    dinoState.rafId = requestAnimationFrame(dinoTick);
+}
+
+function dinoDraw(ctx, canvas) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, DINO_GROUND_Y + DINO_BALL_RADIUS);
+    ctx.lineTo(canvas.width, DINO_GROUND_Y + DINO_BALL_RADIUS);
+    ctx.stroke();
+
+    ctx.fillStyle = '#e2b878';
+    dinoState.obstacles.forEach(o => {
+        const oTop = DINO_GROUND_Y + DINO_BALL_RADIUS - o.height;
+        ctx.fillRect(o.x, oTop, o.width, o.height);
+    });
+
+    ctx.beginPath();
+    ctx.fillStyle = '#c81e1e';
+    ctx.strokeStyle = '#7f1414';
+    ctx.lineWidth = 1.5;
+    ctx.arc(DINO_BALL_X, dinoState.y, DINO_BALL_RADIUS, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+}
+
+async function dinoGameOver() {
+    dinoState.running = false;
+    if (dinoState.rafId) cancelAnimationFrame(dinoState.rafId);
+    const finalScore = dinoState.score;
+
+    document.getElementById('dinoJumpBtn').classList.add('hidden');
+    document.getElementById('dinoFinalScore').textContent = finalScore;
+    document.getElementById('dinoOverOverlay').classList.remove('hidden');
+
+    try {
+        await apiCall('/game/score', { method: 'POST', body: JSON.stringify({ score: finalScore, game: 'dino_run' }) });
+    } catch (error) {
+        console.error('Save dino score error:', error);
+    }
+    loadDinoLeaderboard();
+}
+
+async function loadDinoLeaderboard() {
+    try {
+        const leaderboard = await apiCall('/game/leaderboard?game=dino_run');
+        const container = document.getElementById('dinoLeaderboard');
+
+        if (leaderboard.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No scores yet — be the first to play!</p>';
+            return;
+        }
+
+        container.innerHTML = leaderboard.map((entry, i) => {
+            const isMe = currentUser && entry.memberId === currentUser.memberId;
+            return `
+                <div class="flex items-center justify-between px-4 py-2.5 rounded-xl ${isMe ? 'bg-orange-500/15 border border-orange-500/30' : 'bg-black/20'}">
+                    <div class="flex items-center gap-3">
+                        <span class="text-gray-500 text-sm font-semibold w-5">${i + 1}</span>
+                        <span class="text-white text-sm font-medium">${escapeHtml(entry.memberName)}${isMe ? ' (You)' : ''}</span>
+                    </div>
+                    <span class="text-orange-400 font-bold text-sm">${entry.bestScore}</span>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Load dino leaderboard error:', error);
+    }
+}
+
+document.getElementById('dinoStartBtn').addEventListener('click', startDinoGame);
+document.getElementById('dinoRestartBtn').addEventListener('click', startDinoGame);
+document.getElementById('dinoJumpBtn').addEventListener('click', dinoJump);
+document.getElementById('dinoCanvas').addEventListener('click', dinoJump);
+document.addEventListener('keydown', (e) => {
+    if ((e.code === 'Space' || e.code === 'ArrowUp') && dinoState && dinoState.running) {
+        e.preventDefault();
+        dinoJump();
+    }
+});
 
 // ==================== INIT ====================
 window.addEventListener('load', async () => {
