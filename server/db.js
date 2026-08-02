@@ -115,6 +115,7 @@ db.ready = (async () => {
       whatsapp TEXT,
       address TEXT,
       location TEXT,
+      blood_group TEXT,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'member',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -127,6 +128,7 @@ db.ready = (async () => {
       whatsapp TEXT,
       address TEXT,
       location TEXT,
+      blood_group TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -167,8 +169,10 @@ db.ready = (async () => {
   }
   ensureColumn('members', 'whatsapp', 'TEXT');
   ensureColumn('members', 'location', 'TEXT');
+  ensureColumn('members', 'blood_group', 'TEXT');
   ensureColumn('registrations', 'whatsapp', 'TEXT');
   ensureColumn('registrations', 'location', 'TEXT');
+  ensureColumn('registrations', 'blood_group', 'TEXT');
   ensureColumn('expenses', 'rent', 'REAL NOT NULL DEFAULT 0');
 
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
@@ -183,5 +187,6 @@ db.ready = (async () => {
 })();
 
 db.LOCATIONS = ['India', 'UAE', 'Qatar', 'Canada', 'UK', 'USA', 'Other'];
+db.BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
 module.exports = db;

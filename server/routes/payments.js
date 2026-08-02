@@ -1,9 +1,12 @@
 const express = require('express');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { sendSms } = require('../services/sms');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
+
+const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 router.get('/', (req, res) => {
   const month = parseInt(req.query.month, 10);
@@ -54,6 +57,38 @@ router.post('/', (req, res) => {
   })();
 
   res.json({ message: 'Payments saved' });
+});
+
+router.post('/remind', async (req, res) => {
+  const memberId = req.body.memberId;
+  const month = parseInt(req.body.month, 10);
+  const year = parseInt(req.body.year, 10);
+  if (!memberId || !month || !year) {
+    return res.status(400).json({ error: 'Member, month and year are required' });
+  }
+
+  const member = db.prepare('SELECT member_id, name, mobile FROM members WHERE member_id = ?').get(memberId);
+  if (!member) return res.status(404).json({ error: 'Member not found' });
+
+  const payment = db.prepare('SELECT amount, status FROM payments WHERE member_id = ? AND month = ? AND year = ?').get(memberId, month, year);
+  if (payment && payment.status === 'paid') {
+    return res.status(400).json({ error: 'This member has already paid for this month' });
+  }
+  const amount = (payment && payment.amount) || 100;
+
+  const message = `Dear ${member.name}, your monthly bill of Rs.${amount} for ${MONTH_NAMES[month]} ${year} is pending with Brahmastra Arts & Sports Club. Please pay at your earliest convenience.`;
+
+  let smsSent = false;
+  let smsError = null;
+  try {
+    const result = await sendSms(member.mobile || member.member_id, message);
+    smsSent = !result.skipped;
+  } catch (err) {
+    smsError = err.message;
+    console.error(`Failed to send payment reminder SMS to ${memberId}:`, err.message);
+  }
+
+  res.json({ message: 'Reminder processed', smsSent, ...(smsError && { smsError }) });
 });
 
 module.exports = router;

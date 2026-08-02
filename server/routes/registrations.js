@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { sendSms } = require('../services/sms');
 
 const router = express.Router();
 router.use(requireAuth, requireAdmin);
@@ -13,7 +14,7 @@ router.get('/', (req, res) => {
   res.json(pending);
 });
 
-router.post('/:id/approve', (req, res) => {
+router.post('/:id/approve', async (req, res) => {
   const { password, role } = req.body;
   if (!password) return res.status(400).json({ error: 'Password is required' });
   if (role && !['member', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
@@ -31,20 +32,36 @@ router.post('/:id/approve', (req, res) => {
   const passwordHash = bcrypt.hashSync(password, 10);
 
   const insertMember = db.prepare(`
-    INSERT INTO members (member_id, name, mobile, whatsapp, address, location, password_hash, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO members (member_id, name, mobile, whatsapp, address, location, blood_group, password_hash, role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const markApproved = db.prepare(`UPDATE registrations SET status = 'approved' WHERE id = ?`);
 
   db.transaction(() => {
     insertMember.run(
       memberId, registration.name, registration.mobile, registration.whatsapp,
-      registration.address, registration.location, passwordHash, role || 'member'
+      registration.address, registration.location, registration.blood_group, passwordHash, role || 'member'
     );
     markApproved.run(registration.id);
   })();
 
-  res.status(201).json({ message: 'Registration approved and member created', memberId });
+  const smsMessage = `Welcome to Brahmastra Arts & Sports Club! Your login ID is ${memberId} and password is ${password}. Please log in to the member portal.`;
+  let smsSent = false;
+  let smsError = null;
+  try {
+    const result = await sendSms(memberId, smsMessage);
+    smsSent = !result.skipped;
+  } catch (err) {
+    smsError = err.message;
+    console.error(`Failed to send approval SMS to ${memberId}:`, err.message);
+  }
+
+  res.status(201).json({
+    message: 'Registration approved and member created',
+    memberId,
+    smsSent,
+    ...(smsError && { smsError })
+  });
 });
 
 router.post('/:id/reject', (req, res) => {

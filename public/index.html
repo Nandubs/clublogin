@@ -72,6 +72,19 @@
             box-shadow: 0 6px 18px rgba(255, 122, 26, 0.28);
         }
 
+        .blood-badge {
+            background: linear-gradient(135deg, #dc2626 0%, #f87171 100%);
+            box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+        }
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            15% { transform: scale(1.18); }
+            30% { transform: scale(1); }
+            45% { transform: scale(1.12); }
+            60% { transform: scale(1); }
+        }
+        .heartbeat { animation: heartbeat 2.2s ease-in-out infinite; }
+
         /* Top tabs (desktop / tablet) */
         .top-tabs .tab-btn { color: #9ca3af; }
         .top-tabs .tab-btn.tab-active { background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%); color: #fff; }
@@ -230,6 +243,20 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Blood Group</label>
+                        <select id="regBloodGroup" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                            <option value="">Prefer not to say</option>
+                            <option value="A+">A+</option>
+                            <option value="A-">A-</option>
+                            <option value="B+">B+</option>
+                            <option value="B-">B-</option>
+                            <option value="AB+">AB+</option>
+                            <option value="AB-">AB-</option>
+                            <option value="O+">O+</option>
+                            <option value="O-">O-</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Address</label>
                         <textarea id="regAddress" rows="3" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition"></textarea>
                     </div>
@@ -268,7 +295,10 @@
                     <h1 class="text-lg sm:text-2xl font-bold text-white truncate">Admin Dashboard</h1>
                     <p class="text-gray-400 text-xs sm:text-sm truncate">Welcome, <span id="adminName"></span></p>
                 </div>
-                <button id="logoutBtn" class="bg-red-600/90 hover:bg-red-600 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium shrink-0">Logout</button>
+                <div class="flex gap-2 shrink-0">
+                    <button id="changePasswordBtn" class="bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium">Change Password</button>
+                    <button id="logoutBtn" class="bg-red-600/90 hover:bg-red-600 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium">Logout</button>
+                </div>
             </header>
 
             <!-- Stats Cards -->
@@ -328,6 +358,7 @@
                             <tr class="border-b border-white/10">
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Blood Group</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
                             </tr>
@@ -345,6 +376,7 @@
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Location</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Blood Group</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
                             </tr>
@@ -381,6 +413,10 @@
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"></path></svg>
                         Print
                     </button>
+                    <button id="remindAllBtn" type="button" class="bg-orange-500/15 text-orange-300 px-6 py-2.5 rounded-xl transition btn-pop font-medium w-full sm:w-auto flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                        Remind All Unpaid
+                    </button>
                 </div>
 
                 <div class="hidden md:block overflow-x-auto">
@@ -390,6 +426,7 @@
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Member</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Amount</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Status</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Remind</th>
                             </tr>
                         </thead>
                         <tbody id="paymentsTable"></tbody>
@@ -499,10 +536,42 @@
                     <h1 class="text-lg sm:text-2xl font-bold text-white truncate">Welcome, <span id="memberName"></span></h1>
                     <p class="text-gray-400 text-xs sm:text-sm truncate">Member ID: <span id="memberIdDisplay"></span></p>
                 </div>
-                <button id="memberLogoutBtn" class="bg-red-600/90 hover:bg-red-600 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium shrink-0">Logout</button>
+                <div class="flex flex-wrap justify-end gap-2 shrink-0">
+                    <button id="editProfileBtn" class="bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium">Edit Profile</button>
+                    <button id="memberChangePasswordBtn" class="bg-white/10 hover:bg-white/20 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium">Change Password</button>
+                    <button id="memberLogoutBtn" class="bg-red-600/90 hover:bg-red-600 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium">Logout</button>
+                </div>
             </header>
 
+            <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up">
+                    <p class="text-gray-400 text-xs sm:text-sm">Monthly Collection</p>
+                    <h3 class="text-xl sm:text-3xl font-bold text-green-400 mt-1">₹<span id="memberMonthlyCollection">0</span></h3>
+                </div>
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up stagger-1">
+                    <p class="text-gray-400 text-xs sm:text-sm">Monthly Expenses</p>
+                    <h3 class="text-xl sm:text-3xl font-bold text-red-400 mt-1">₹<span id="memberMonthlyExpenses">0</span></h3>
+                </div>
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up stagger-2">
+                    <p class="text-gray-400 text-xs sm:text-sm">Net Balance</p>
+                    <h3 class="text-xl sm:text-3xl font-bold text-orange-400 mt-1">₹<span id="memberNetBalance">0</span></h3>
+                </div>
+            </div>
+
             <div class="glass rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 animate-fade-in-up stagger-1">
+                <div class="flex justify-between items-center mb-4 flex-wrap gap-3">
+                    <h2 class="text-lg sm:text-xl font-bold text-white">Payment Calendar</h2>
+                    <select id="calendarYear" class="px-3 py-2 bg-black/40 border border-white/10 rounded-xl text-white text-sm"></select>
+                </div>
+                <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 mb-2" id="paymentCalendar"></div>
+                <div class="flex flex-wrap gap-4 mt-4 text-xs text-gray-400">
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Paid</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Not Paid</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-500"></span> Upcoming</span>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 animate-fade-in-up stagger-2">
                 <h2 class="text-lg sm:text-xl font-bold text-white mb-4">Payment History</h2>
 
                 <div class="hidden md:block overflow-x-auto">
@@ -524,11 +593,40 @@
                 <p class="text-gray-500 text-xs mt-4">Prefer to pay manually? UPI ID <span class="text-gray-300">kiransathyadevan@okicici</span> or mobile <span class="text-gray-300">9995499902</span>.</p>
             </div>
 
-            <div class="glass rounded-2xl p-4 sm:p-6 animate-fade-in-up stagger-2">
+            <div class="glass rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 animate-fade-in-up stagger-3">
                 <h2 class="text-lg sm:text-xl font-bold text-white mb-4">Monthly Expenses</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="memberExpensesContainer">
                     <!-- Expenses will be loaded here -->
                 </div>
+            </div>
+
+            <div class="glass rounded-2xl p-4 sm:p-6 animate-fade-in-up stagger-4">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="icon-badge blood-badge shrink-0">
+                        <svg class="w-5 h-5 text-white heartbeat" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 5 11.5 5 16a7 7 0 0014 0c0-4.5-7-14-7-14z"/></svg>
+                    </div>
+                    <div class="min-w-0">
+                        <h2 class="text-lg sm:text-xl font-bold text-white">Club Directory</h2>
+                        <p class="text-gray-500 text-xs">Fellow members' blood group &amp; contact details &mdash; every drop counts in an emergency.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-5" id="bloodGroupSummary"></div>
+
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Blood Group</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Country</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">WhatsApp</th>
+                            </tr>
+                        </thead>
+                        <tbody id="directoryTable"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="directoryCards"></div>
             </div>
         </div>
     </div>
@@ -565,6 +663,20 @@
                         <option value="UK">UK</option>
                         <option value="USA">USA</option>
                         <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Blood Group</label>
+                    <select id="newMemberBloodGroup" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="">Not specified</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
                     </select>
                 </div>
                 <div>
@@ -613,6 +725,20 @@
                         <option value="UK">UK</option>
                         <option value="USA">USA</option>
                         <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Blood Group</label>
+                    <select id="editMemberBloodGroup" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="">Not specified</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
                     </select>
                 </div>
                 <div>
@@ -705,6 +831,88 @@
                 <div class="flex gap-3 pt-2">
                     <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Approve</button>
                     <button type="button" onclick="closeModal('approveRegistrationModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Profile Modal (member self-service) -->
+    <div id="editProfileModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Edit Profile</h3>
+            <form id="editProfileForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Mobile Number (login ID)</label>
+                    <input type="text" id="profileMemberId" disabled class="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-gray-500 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Name</label>
+                    <input type="text" id="profileName" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">WhatsApp Number</label>
+                    <input type="tel" id="profileWhatsapp" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Current Location</label>
+                    <select id="profileLocation" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="India">India</option>
+                        <option value="UAE">UAE</option>
+                        <option value="Qatar">Qatar</option>
+                        <option value="Canada">Canada</option>
+                        <option value="UK">UK</option>
+                        <option value="USA">USA</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Blood Group</label>
+                    <select id="profileBloodGroup" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="">Not specified</option>
+                        <option value="A+">A+</option>
+                        <option value="A-">A-</option>
+                        <option value="B+">B+</option>
+                        <option value="B-">B-</option>
+                        <option value="AB+">AB+</option>
+                        <option value="AB-">AB-</option>
+                        <option value="O+">O+</option>
+                        <option value="O-">O-</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Address</label>
+                    <textarea id="profileAddress" rows="3" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition"></textarea>
+                </div>
+                <div id="editProfileError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-xl text-sm animate-fade-in"></div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Save Changes</button>
+                    <button type="button" onclick="closeModal('editProfileModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="changePasswordModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Change Password</h3>
+            <form id="changePasswordForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Current Password</label>
+                    <input type="password" id="currentPasswordInput" required autocomplete="current-password" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">New Password</label>
+                    <input type="password" id="newPasswordInput" required autocomplete="new-password" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Confirm New Password</label>
+                    <input type="password" id="confirmPasswordInput" required autocomplete="new-password" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div id="changePasswordError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-xl text-sm animate-fade-in"></div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Update Password</button>
+                    <button type="button" onclick="closeModal('changePasswordModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
                 </div>
             </form>
         </div>

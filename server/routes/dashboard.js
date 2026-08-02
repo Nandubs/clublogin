@@ -1,10 +1,12 @@
 const express = require('express');
 const db = require('../db');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
-router.use(requireAuth, requireAdmin);
+router.use(requireAuth);
 
+// Club-wide financial summary — intentionally open to any logged-in member
+// (not just admins) for transparency, not just the main admin dashboard.
 router.get('/stats', (req, res) => {
   const now = new Date();
   const month = now.getMonth() + 1;

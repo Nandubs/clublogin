@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
+const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -27,10 +28,13 @@ router.post('/login', (req, res) => {
 });
 
 router.post('/register', (req, res) => {
-  const { name, mobile, whatsapp, address, location } = req.body;
+  const { name, mobile, whatsapp, address, location, bloodGroup } = req.body;
   if (!name || !mobile) return res.status(400).json({ error: 'Name and mobile number are required' });
   if (!location || !db.LOCATIONS.includes(location)) {
     return res.status(400).json({ error: 'Please select a valid location' });
+  }
+  if (bloodGroup && !db.BLOOD_GROUPS.includes(bloodGroup)) {
+    return res.status(400).json({ error: 'Please select a valid blood group' });
   }
 
   const trimmedMobile = mobile.trim();
@@ -46,11 +50,31 @@ router.post('/register', (req, res) => {
   if (existingPending) return res.status(409).json({ error: 'This mobile number already has a pending registration' });
 
   db.prepare(`
-    INSERT INTO registrations (name, mobile, whatsapp, address, location, status)
-    VALUES (?, ?, ?, ?, ?, 'pending')
-  `).run(name.trim(), trimmedMobile, (whatsapp || '').trim(), (address || '').trim(), location);
+    INSERT INTO registrations (name, mobile, whatsapp, address, location, blood_group, status)
+    VALUES (?, ?, ?, ?, ?, ?, 'pending')
+  `).run(name.trim(), trimmedMobile, (whatsapp || '').trim(), (address || '').trim(), location, bloodGroup || null);
 
   res.status(201).json({ message: 'Registration submitted. An admin will review your request.' });
+});
+
+router.put('/change-password', requireAuth, (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Current and new password are required' });
+  }
+  if (newPassword.length < 4) {
+    return res.status(400).json({ error: 'New password must be at least 4 characters' });
+  }
+
+  const member = db.prepare('SELECT * FROM members WHERE member_id = ?').get(req.user.memberId);
+  if (!member || !bcrypt.compareSync(currentPassword, member.password_hash)) {
+    return res.status(401).json({ error: 'Current password is incorrect' });
+  }
+
+  const passwordHash = bcrypt.hashSync(newPassword, 10);
+  db.prepare('UPDATE members SET password_hash = ? WHERE member_id = ?').run(passwordHash, member.member_id);
+
+  res.json({ message: 'Password updated successfully' });
 });
 
 module.exports = router;

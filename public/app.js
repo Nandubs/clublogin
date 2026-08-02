@@ -150,6 +150,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
                 mobile: document.getElementById('regMobile').value,
                 whatsapp: document.getElementById('regWhatsapp').value,
                 location: document.getElementById('regLocation').value,
+                bloodGroup: document.getElementById('regBloodGroup').value,
                 address: document.getElementById('regAddress').value
             })
         });
@@ -192,12 +193,21 @@ function memberRoleBadge(m) {
     return `<span class="px-3 py-1 rounded-full text-sm ${m.role === 'admin' ? 'bg-orange-500/15 text-orange-300' : 'bg-blue-500/15 text-blue-300'}">${escapeHtml(m.role)}</span>`;
 }
 
+const BLOOD_DROP_SVG = '<svg class="w-2.5 h-2.5 shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C12 2 5 11.5 5 16a7 7 0 0014 0c0-4.5-7-14-7-14z"/></svg>';
+
+function bloodGroupBadge(bloodGroup) {
+    return bloodGroup
+        ? `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-red-500/15 text-red-300">${BLOOD_DROP_SVG}${escapeHtml(bloodGroup)}</span>`
+        : `<span class="text-gray-600 text-xs">&mdash;</span>`;
+}
+
 function renderMembersGroup(members, tableId, cardsId, showLocationColumn) {
     document.getElementById(tableId).innerHTML = members.map(m => `
         <tr class="border-b border-white/5 animate-fade-in">
             <td class="py-3 px-4 text-white">${escapeHtml(m.memberId)}</td>
             <td class="py-3 px-4 text-white">${escapeHtml(m.memberName)}</td>
             ${showLocationColumn ? `<td class="py-3 px-4">${locationBadge(m.location)}</td>` : ''}
+            <td class="py-3 px-4 text-center">${bloodGroupBadge(m.bloodGroup)}</td>
             <td class="py-3 px-4">${memberRoleBadge(m)}</td>
             <td class="py-3 px-4 text-center space-x-2">${memberActionsHtml(m)}</td>
         </tr>
@@ -213,6 +223,7 @@ function renderMembersGroup(members, tableId, cardsId, showLocationColumn) {
                 <div class="flex flex-col items-end gap-1.5 shrink-0">
                     ${memberRoleBadge(m)}
                     ${showLocationColumn ? locationBadge(m.location) : ''}
+                    ${bloodGroupBadge(m.bloodGroup)}
                 </div>
             </div>
             <div class="flex gap-2">${memberActionsHtml(m)}</div>
@@ -257,6 +268,12 @@ async function loadPayments() {
         const rows = await apiCall(`/payments?month=${month}&year=${year}`);
         paymentsCache = rows;
 
+        function remindButtonHtml(r) {
+            return r.status === 'paid'
+                ? '<span class="text-gray-600 text-sm">&mdash;</span>'
+                : `<button data-action="remind-payment" data-member="${escapeHtml(r.memberId)}" class="text-orange-400 hover:text-orange-300 px-3 py-1.5 bg-orange-500/10 rounded-lg transition btn-pop text-sm font-medium">Remind</button>`;
+        }
+
         document.getElementById('paymentsTable').innerHTML = rows.map(r => {
             const isPaid = r.status === 'paid';
             return `
@@ -269,6 +286,7 @@ async function loadPayments() {
                             <span class="ml-2 ${isPaid ? 'text-green-400' : 'text-red-400'}">${isPaid ? 'Paid' : 'Not Paid'}</span>
                         </label>
                     </td>
+                    <td class="py-3 px-4 text-center">${remindButtonHtml(r)}</td>
                 </tr>
             `;
         }).join('');
@@ -285,6 +303,7 @@ async function loadPayments() {
                         <input type="checkbox" class="payment-check accent-orange-500 w-5 h-5" data-member="${escapeHtml(r.memberId)}" ${isPaid ? 'checked' : ''}>
                         <span class="text-sm font-medium ${isPaid ? 'text-green-400' : 'text-red-400'}">${isPaid ? 'Paid' : 'Not Paid'}</span>
                     </label>
+                    ${remindButtonHtml(r)}
                 </div>
             `;
         }).join('');
@@ -300,9 +319,58 @@ async function loadPayments() {
                 });
             });
         });
+
+        document.querySelectorAll('[data-action="remind-payment"]').forEach(btn => {
+            btn.addEventListener('click', () => remindPayment(btn.dataset.member));
+        });
     } catch (error) {
         console.error('Load payments error:', error);
     }
+}
+
+async function remindPayment(memberId) {
+    const month = parseInt(document.getElementById('paymentMonth').value);
+    const year = parseInt(document.getElementById('paymentYear').value);
+
+    try {
+        const result = await apiCall('/payments/remind', {
+            method: 'POST',
+            body: JSON.stringify({ memberId, month, year })
+        });
+        toast(result.smsSent ? 'Reminder SMS sent!' : 'Reminder failed to send — try contacting them directly.', result.smsSent ? 'success' : 'info');
+    } catch (error) {
+        toast(error.message, 'error');
+    }
+}
+
+async function remindAllUnpaid() {
+    const month = parseInt(document.getElementById('paymentMonth').value);
+    const year = parseInt(document.getElementById('paymentYear').value);
+    const unpaid = paymentsCache.filter(r => r.status !== 'paid');
+
+    if (unpaid.length === 0) {
+        toast('Everyone has paid for this month!', 'info');
+        return;
+    }
+
+    const ok = await showConfirm(`Send a payment reminder SMS to ${unpaid.length} member(s) who haven't paid?`, 'Remind all unpaid members?');
+    if (!ok) return;
+
+    let sent = 0;
+    let failed = 0;
+    for (const r of unpaid) {
+        try {
+            const result = await apiCall('/payments/remind', {
+                method: 'POST',
+                body: JSON.stringify({ memberId: r.memberId, month, year })
+            });
+            if (result.smsSent) sent++; else failed++;
+        } catch (error) {
+            failed++;
+        }
+    }
+
+    toast(`Reminders sent: ${sent}${failed ? `, failed: ${failed}` : ''}`, failed ? 'info' : 'success');
 }
 
 async function savePayments() {
@@ -516,6 +584,7 @@ function openEditModal(memberId) {
     document.getElementById('editMemberRole').value = member.role;
     document.getElementById('editMemberWhatsapp').value = member.whatsapp || '';
     document.getElementById('editMemberLocation').value = member.location || 'India';
+    document.getElementById('editMemberBloodGroup').value = member.bloodGroup || '';
     document.getElementById('editMemberPassword').value = '';
 
     const roleSelect = document.getElementById('editMemberRole');
@@ -538,6 +607,7 @@ async function updateMember() {
     const role = document.getElementById('editMemberRole').value;
     const whatsapp = document.getElementById('editMemberWhatsapp').value;
     const location = document.getElementById('editMemberLocation').value;
+    const bloodGroup = document.getElementById('editMemberBloodGroup').value;
 
     if (!memberName.trim()) {
         toast('Member name cannot be empty', 'error');
@@ -545,7 +615,7 @@ async function updateMember() {
     }
 
     try {
-        const updateData = { memberName, role, whatsapp, location };
+        const updateData = { memberName, role, whatsapp, location, bloodGroup };
         if (password.trim()) updateData.password = password;
 
         await apiCall(`/members/${memberId}`, {
@@ -601,8 +671,106 @@ async function deleteExpense(id) {
 async function initMember() {
     document.getElementById('memberName').textContent = currentUser.memberName;
     document.getElementById('memberIdDisplay').textContent = currentUser.memberId;
-    await loadMemberPayments();
-    await loadMemberExpenses();
+    populateYears();
+    await Promise.all([loadMemberDashboardStats(), loadMemberPayments(), loadMemberExpenses(), loadDirectory()]);
+}
+
+async function loadMemberDashboardStats() {
+    try {
+        const data = await apiCall('/dashboard/stats');
+        animateNumber(document.getElementById('memberMonthlyCollection'), data.monthlyCollection);
+        animateNumber(document.getElementById('memberMonthlyExpenses'), data.monthlyExpenses);
+        animateNumber(document.getElementById('memberNetBalance'), data.netBalance);
+    } catch (error) {
+        console.error('Load member dashboard stats error:', error);
+    }
+}
+
+const BLOOD_GROUP_ORDER = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-'];
+
+function renderBloodGroupSummary(members) {
+    const counts = {};
+    members.forEach(m => {
+        if (m.bloodGroup) counts[m.bloodGroup] = (counts[m.bloodGroup] || 0) + 1;
+    });
+
+    const present = BLOOD_GROUP_ORDER.filter(bg => counts[bg]);
+    const container = document.getElementById('bloodGroupSummary');
+
+    if (present.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-xs">No blood group info on file yet.</p>';
+        return;
+    }
+
+    container.innerHTML = present.map((bg, i) => `
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-red-500/10 border border-red-500/25 text-red-300 animate-scale-in" style="animation-delay:${i * 0.05}s">
+            ${BLOOD_DROP_SVG}${bg}<span class="text-red-400/60 font-normal">&times;${counts[bg]}</span>
+        </span>
+    `).join('');
+}
+
+async function loadDirectory() {
+    try {
+        const members = await apiCall('/members/directory');
+        renderBloodGroupSummary(members);
+
+        document.getElementById('directoryTable').innerHTML = members.map(m => `
+            <tr class="border-b border-white/5 animate-fade-in">
+                <td class="py-3 px-4 text-white">${escapeHtml(m.memberName)}</td>
+                <td class="py-3 px-4 text-center">${bloodGroupBadge(m.bloodGroup)}</td>
+                <td class="py-3 px-4">${locationBadge(m.location)}</td>
+                <td class="py-3 px-4 text-gray-300">${escapeHtml(m.whatsapp || '-')}</td>
+            </tr>
+        `).join('');
+
+        document.getElementById('directoryCards').innerHTML = members.map(m => `
+            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
+                <div class="flex items-start justify-between gap-3 mb-2">
+                    <p class="text-white font-semibold truncate">${escapeHtml(m.memberName)}</p>
+                    ${bloodGroupBadge(m.bloodGroup)}
+                </div>
+                <div class="flex items-center justify-between gap-3">
+                    ${locationBadge(m.location)}
+                    <p class="text-gray-400 text-sm">${escapeHtml(m.whatsapp || 'No WhatsApp on file')}</p>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Load directory error:', error);
+    }
+}
+
+let memberPaymentsCache = [];
+
+function renderPaymentCalendar() {
+    const year = parseInt(document.getElementById('calendarYear').value) || new Date().getFullYear();
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth() + 1;
+
+    document.getElementById('paymentCalendar').innerHTML = Array.from({ length: 12 }, (_, i) => i + 1).map(month => {
+        const record = memberPaymentsCache.find(p => p.month === month && p.year === year);
+        const isFuture = year > currentYear || (year === currentYear && month > currentMonth);
+
+        let statusClass, statusLabel;
+        if (isFuture) {
+            statusClass = 'bg-gray-500/10 border-gray-500/25 text-gray-400';
+            statusLabel = 'Upcoming';
+        } else if (record && record.status === 'paid') {
+            statusClass = 'bg-green-500/10 border-green-500/25 text-green-400';
+            statusLabel = 'Paid';
+        } else {
+            statusClass = 'bg-red-500/10 border-red-500/25 text-red-400';
+            statusLabel = 'Not Paid';
+        }
+
+        return `
+            <div class="rounded-xl border p-3 text-center animate-fade-in ${statusClass}">
+                <p class="font-semibold text-sm text-white">${monthNames[month]}</p>
+                <p class="text-xs mt-1">${statusLabel}</p>
+            </div>
+        `;
+    }).join('');
 }
 
 const CLUB_UPI_ID = 'kiransathyadevan@okicici';
@@ -625,10 +793,15 @@ function payButtonHtml(p) {
     return `<a href="${buildUpiLink(p.amount || 100, note)}" class="inline-block gradient-bg text-white text-sm font-medium px-3 py-1.5 rounded-lg transition btn-pop">Pay via UPI</a>`;
 }
 
+let currentMemberProfile = null;
+
 async function loadMemberPayments() {
     try {
         const data = await apiCall('/members/me');
+        currentMemberProfile = data;
         const payments = data.monthlyPayments || [];
+        memberPaymentsCache = payments;
+        renderPaymentCalendar();
 
         document.getElementById('memberPaymentsTable').innerHTML = payments.map(p => `
             <tr class="border-b border-white/5 animate-fade-in">
@@ -723,6 +896,7 @@ document.getElementById('addMemberForm').addEventListener('submit', async (e) =>
                 password: document.getElementById('newMemberPassword').value,
                 whatsapp: document.getElementById('newMemberWhatsapp').value,
                 location: document.getElementById('newMemberLocation').value,
+                bloodGroup: document.getElementById('newMemberBloodGroup').value,
                 role: document.getElementById('newMemberRole').value
             })
         });
@@ -771,7 +945,7 @@ document.getElementById('approveRegistrationForm').addEventListener('submit', as
     if (!currentApprovingRegistration) return;
 
     try {
-        await apiCall(`/registrations/${currentApprovingRegistration.id}/approve`, {
+        const result = await apiCall(`/registrations/${currentApprovingRegistration.id}/approve`, {
             method: 'POST',
             body: JSON.stringify({
                 password: document.getElementById('approvePassword').value,
@@ -781,7 +955,11 @@ document.getElementById('approveRegistrationForm').addEventListener('submit', as
         closeModal('approveRegistrationModal');
         e.target.reset();
         await Promise.all([loadRegistrations(), loadMembers(), loadDashboard()]);
-        toast('Registration approved! Share the password with them — their mobile number is their login ID.', 'success');
+        if (result.smsSent) {
+            toast('Registration approved! Login details sent via SMS.', 'success');
+        } else {
+            toast('Registration approved, but SMS failed to send — share the password with them manually.', 'info');
+        }
     } catch (error) {
         toast(error.message, 'error');
     }
@@ -809,7 +987,7 @@ function setupTabs() {
 
 function populateYears() {
     const year = new Date().getFullYear();
-    ['paymentYear', 'expenseYear'].forEach(id => {
+    ['paymentYear', 'expenseYear', 'calendarYear'].forEach(id => {
         const select = document.getElementById(id);
         if (select) {
             select.innerHTML = '';
@@ -826,15 +1004,104 @@ document.getElementById('addMemberBtn').addEventListener('click', () => openModa
 document.getElementById('addExpenseBtn').addEventListener('click', () => openModal('addExpenseModal'));
 document.getElementById('savePaymentsBtn').addEventListener('click', savePayments);
 document.getElementById('printPaymentsBtn').addEventListener('click', printPayments);
+document.getElementById('remindAllBtn').addEventListener('click', remindAllUnpaid);
 document.getElementById('paymentMonth').addEventListener('change', loadPayments);
 document.getElementById('paymentYear').addEventListener('change', loadPayments);
 document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('memberLogoutBtn').addEventListener('click', logout);
+document.getElementById('calendarYear').addEventListener('change', renderPaymentCalendar);
 
 function logout() {
     localStorage.clear();
     location.reload();
 }
+
+// ==================== EDIT PROFILE (member self-service) ====================
+function openEditProfileModal() {
+    if (!currentMemberProfile) return;
+    document.getElementById('editProfileError').classList.add('hidden');
+    document.getElementById('profileMemberId').value = currentMemberProfile.memberId;
+    document.getElementById('profileName').value = currentMemberProfile.memberName;
+    document.getElementById('profileWhatsapp').value = currentMemberProfile.whatsapp || '';
+    document.getElementById('profileLocation').value = currentMemberProfile.location || 'India';
+    document.getElementById('profileBloodGroup').value = currentMemberProfile.bloodGroup || '';
+    document.getElementById('profileAddress').value = currentMemberProfile.address || '';
+    openModal('editProfileModal');
+}
+document.getElementById('editProfileBtn').addEventListener('click', openEditProfileModal);
+
+document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorDiv = document.getElementById('editProfileError');
+    errorDiv.classList.add('hidden');
+
+    const memberName = document.getElementById('profileName').value;
+    const whatsapp = document.getElementById('profileWhatsapp').value;
+    const location = document.getElementById('profileLocation').value;
+    const bloodGroup = document.getElementById('profileBloodGroup').value;
+    const address = document.getElementById('profileAddress').value;
+
+    if (!memberName.trim()) {
+        errorDiv.textContent = 'Name cannot be empty';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        await apiCall('/members/me', {
+            method: 'PUT',
+            body: JSON.stringify({ memberName, whatsapp, location, bloodGroup, address })
+        });
+        closeModal('editProfileModal');
+
+        currentUser.memberName = memberName;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        document.getElementById('memberName').textContent = memberName;
+
+        await Promise.all([loadMemberPayments(), loadDirectory()]);
+        toast('Profile updated!', 'success');
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('hidden');
+    }
+});
+
+// ==================== CHANGE PASSWORD ====================
+function openChangePasswordModal() {
+    document.getElementById('changePasswordForm').reset();
+    document.getElementById('changePasswordError').classList.add('hidden');
+    openModal('changePasswordModal');
+}
+document.getElementById('changePasswordBtn').addEventListener('click', openChangePasswordModal);
+document.getElementById('memberChangePasswordBtn').addEventListener('click', openChangePasswordModal);
+
+document.getElementById('changePasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const errorDiv = document.getElementById('changePasswordError');
+    errorDiv.classList.add('hidden');
+
+    const currentPassword = document.getElementById('currentPasswordInput').value;
+    const newPassword = document.getElementById('newPasswordInput').value;
+    const confirmPassword = document.getElementById('confirmPasswordInput').value;
+
+    if (newPassword !== confirmPassword) {
+        errorDiv.textContent = 'New passwords do not match';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        await apiCall('/auth/change-password', {
+            method: 'PUT',
+            body: JSON.stringify({ currentPassword, newPassword })
+        });
+        closeModal('changePasswordModal');
+        toast('Password updated successfully!', 'success');
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('hidden');
+    }
+});
 
 // ==================== INIT ====================
 window.addEventListener('load', async () => {
