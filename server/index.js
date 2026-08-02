@@ -10,6 +10,7 @@ const memberRoutes = require('./routes/members');
 const paymentRoutes = require('./routes/payments');
 const expenseRoutes = require('./routes/expenses');
 const dashboardRoutes = require('./routes/dashboard');
+const gameRoutes = require('./routes/game');
 
 async function start() {
   await db.ready;
@@ -23,6 +24,7 @@ async function start() {
   app.use('/api/payments', paymentRoutes);
   app.use('/api/expenses', expenseRoutes);
   app.use('/api/dashboard', dashboardRoutes);
+  app.use('/api/game', gameRoutes);
 
   app.use(express.static(path.join(__dirname, '..', 'public')));
   app.get('*', (req, res) => {

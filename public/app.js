@@ -828,7 +828,7 @@ async function initMember() {
     document.getElementById('memberName').textContent = currentUser.memberName;
     document.getElementById('memberIdDisplay').textContent = currentUser.memberId;
     populateYears();
-    await Promise.all([loadMemberDashboardStats(), loadMemberPayments(), loadMemberExpenses(), loadDirectory()]);
+    await Promise.all([loadMemberDashboardStats(), loadMemberPayments(), loadMemberExpenses(), loadDirectory(), loadGameLeaderboard()]);
 }
 
 async function loadMemberDashboardStats() {
@@ -1378,6 +1378,187 @@ document.getElementById('changePasswordForm').addEventListener('submit', async (
         errorDiv.classList.remove('hidden');
     }
 });
+
+// ==================== SIX HITTER GAME ====================
+const GAME_TOTAL_BALLS = 10;
+const GAME_MAX_WICKETS = 3;
+const GAME_INITIAL_PERIOD = 1800; // ms per full back-and-forth cycle
+const GAME_MIN_PERIOD = 900;
+const GAME_PERIOD_STEP = 90;
+
+let gameState = null;
+
+function gameTrackMetrics() {
+    const track = document.getElementById('gameTrack');
+    const ball = document.getElementById('gameBall');
+    const ballWidth = ball.offsetWidth;
+    return { trackWidth: track.clientWidth, ballWidth, maxX: track.clientWidth - ballWidth };
+}
+
+function updateGameHud() {
+    document.getElementById('gameBallCount').textContent = gameState.ballNumber;
+    document.getElementById('gameWickets').textContent = gameState.wickets;
+    document.getElementById('gameScore').textContent = gameState.score;
+}
+
+function stopGameBallAnimation() {
+    if (gameState && gameState.animFrameId) {
+        cancelAnimationFrame(gameState.animFrameId);
+        gameState.animFrameId = null;
+    }
+}
+
+function startGameBall() {
+    const { maxX } = gameTrackMetrics();
+    gameState.ballX = 0;
+    gameState.direction = 1;
+    gameState.lastTimestamp = null;
+    gameState.maxX = maxX;
+
+    function tick(timestamp) {
+        if (!gameState) return;
+        if (gameState.lastTimestamp === null) gameState.lastTimestamp = timestamp;
+        const dt = timestamp - gameState.lastTimestamp;
+        gameState.lastTimestamp = timestamp;
+
+        const speed = gameState.maxX / (gameState.period / 2);
+        gameState.ballX += gameState.direction * speed * dt;
+
+        if (gameState.ballX >= gameState.maxX) {
+            gameState.ballX = gameState.maxX;
+            gameState.direction = -1;
+        } else if (gameState.ballX <= 0) {
+            gameState.ballX = 0;
+            gameState.direction = 1;
+        }
+
+        document.getElementById('gameBall').style.left = `${gameState.ballX}px`;
+        gameState.animFrameId = requestAnimationFrame(tick);
+    }
+
+    gameState.animFrameId = requestAnimationFrame(tick);
+}
+
+function startGame() {
+    document.getElementById('gameIntro').classList.add('hidden');
+    document.getElementById('gameOverArea').classList.add('hidden');
+    document.getElementById('gamePlayArea').classList.remove('hidden');
+    document.getElementById('gameLastResult').textContent = '';
+
+    gameState = {
+        ballNumber: 1,
+        wickets: 0,
+        score: 0,
+        period: GAME_INITIAL_PERIOD,
+        animFrameId: null,
+        ballX: 0,
+        direction: 1,
+        lastTimestamp: null,
+        maxX: 0
+    };
+
+    updateGameHud();
+    startGameBall();
+}
+
+function swingBat() {
+    if (!gameState) return;
+    stopGameBallAnimation();
+
+    const { trackWidth, ballWidth } = gameTrackMetrics();
+    const ballCenter = gameState.ballX + ballWidth / 2;
+    const zoneStart = trackWidth * 0.4;
+    const zoneEnd = trackWidth * 0.6;
+    const zoneWidth = zoneEnd - zoneStart;
+    const innerStart = zoneStart + zoneWidth * 0.3;
+    const innerEnd = zoneEnd - zoneWidth * 0.3;
+    const outerMargin = zoneWidth * 0.5;
+
+    let runs = 0;
+    let resultText, resultClass;
+    let isWicket = false;
+
+    if (ballCenter >= innerStart && ballCenter <= innerEnd) {
+        runs = 6;
+        resultText = 'SIX!';
+        resultClass = 'text-green-400';
+    } else if (ballCenter >= zoneStart && ballCenter <= zoneEnd) {
+        runs = 4;
+        resultText = 'FOUR!';
+        resultClass = 'text-blue-400';
+    } else if (ballCenter >= zoneStart - outerMargin && ballCenter <= zoneEnd + outerMargin) {
+        runs = 1;
+        resultText = '1 run';
+        resultClass = 'text-gray-300';
+    } else {
+        resultText = 'OUT!';
+        resultClass = 'text-red-500';
+        isWicket = true;
+    }
+
+    gameState.score += runs;
+    if (isWicket) gameState.wickets++;
+
+    const resultEl = document.getElementById('gameLastResult');
+    resultEl.textContent = resultText;
+    resultEl.className = `text-center text-2xl font-bold mt-3 h-8 ${resultClass}`;
+    updateGameHud();
+
+    if (gameState.ballNumber >= GAME_TOTAL_BALLS || gameState.wickets >= GAME_MAX_WICKETS) {
+        setTimeout(endGame, 700);
+        return;
+    }
+
+    gameState.ballNumber++;
+    gameState.period = Math.max(GAME_MIN_PERIOD, gameState.period - GAME_PERIOD_STEP);
+    setTimeout(startGameBall, 700);
+}
+
+async function endGame() {
+    const finalScore = gameState.score;
+    document.getElementById('gamePlayArea').classList.add('hidden');
+    document.getElementById('gameOverArea').classList.remove('hidden');
+    document.getElementById('gameFinalScore').textContent = finalScore;
+    gameState = null;
+
+    try {
+        await apiCall('/game/score', { method: 'POST', body: JSON.stringify({ score: finalScore }) });
+    } catch (error) {
+        console.error('Save game score error:', error);
+    }
+    loadGameLeaderboard();
+}
+
+async function loadGameLeaderboard() {
+    try {
+        const leaderboard = await apiCall('/game/leaderboard');
+        const container = document.getElementById('gameLeaderboard');
+
+        if (leaderboard.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No scores yet — be the first to play!</p>';
+            return;
+        }
+
+        container.innerHTML = leaderboard.map((entry, i) => {
+            const isMe = currentUser && entry.memberId === currentUser.memberId;
+            return `
+                <div class="flex items-center justify-between px-4 py-2.5 rounded-xl ${isMe ? 'bg-orange-500/15 border border-orange-500/30' : 'bg-black/20'}">
+                    <div class="flex items-center gap-3">
+                        <span class="text-gray-500 text-sm font-semibold w-5">${i + 1}</span>
+                        <span class="text-white text-sm font-medium">${escapeHtml(entry.memberName)}${isMe ? ' (You)' : ''}</span>
+                    </div>
+                    <span class="text-orange-400 font-bold text-sm">${entry.bestScore}</span>
+                </div>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Load leaderboard error:', error);
+    }
+}
+
+document.getElementById('gameStartBtn').addEventListener('click', startGame);
+document.getElementById('gamePlayAgainBtn').addEventListener('click', startGame);
+document.getElementById('gameSwingBtn').addEventListener('click', swingBat);
 
 // ==================== INIT ====================
 window.addEventListener('load', async () => {
