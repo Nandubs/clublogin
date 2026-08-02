@@ -55,7 +55,6 @@
         .animate-slide-in { animation: slideInRight 0.35s ease both; }
         .stagger-1 { animation-delay: .05s; } .stagger-2 { animation-delay: .1s; }
         .stagger-3 { animation-delay: .15s; } .stagger-4 { animation-delay: .2s; }
-        .stagger-5 { animation-delay: .25s; }
 
         .card-hover { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
         .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); border-color: rgba(255,122,26,0.35); }
@@ -670,54 +669,6 @@
             </div>
 
             <div class="glass rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 animate-fade-in-up stagger-4">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="icon-badge gradient-bg shrink-0">
-                        <svg class="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <circle cx="12" cy="12" r="8" fill="#c81e1e" stroke="#7f1414" stroke-width="0.6"/>
-                            <path d="M7 8 Q12 12 7 16" stroke="#fff" stroke-width="1" fill="none"/>
-                            <path d="M17 8 Q12 12 17 16" stroke="#fff" stroke-width="1" fill="none"/>
-                        </svg>
-                    </div>
-                    <div class="min-w-0">
-                        <h2 class="text-lg sm:text-xl font-bold text-white">Six Hitter Challenge</h2>
-                        <p class="text-gray-500 text-xs">Time your swing to smash sixes! 10 balls, 3 wickets.</p>
-                    </div>
-                </div>
-
-                <div class="bg-black/30 border border-white/10 rounded-2xl p-4 sm:p-6">
-                    <div id="gameIntro" class="text-center py-4">
-                        <p class="text-gray-400 text-sm mb-4">Tap <strong class="text-white">Swing</strong> right as the ball crosses the green zone. Center it for a six!</p>
-                        <button id="gameStartBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white font-medium transition btn-pop shadow-lg shadow-orange-500/20">Start Over</button>
-                    </div>
-
-                    <div id="gamePlayArea" class="hidden">
-                        <div class="flex justify-between items-center mb-3 text-sm">
-                            <span class="text-gray-400">Ball <span id="gameBallCount">1</span>/10</span>
-                            <span class="text-red-400">Wickets: <span id="gameWickets">0</span>/3</span>
-                            <span class="text-orange-400 font-bold">Score: <span id="gameScore">0</span></span>
-                        </div>
-                        <div class="relative h-16 bg-black/40 rounded-xl overflow-hidden mb-4" id="gameTrack">
-                            <div class="absolute inset-y-0 left-[40%] right-[40%] bg-green-500/20 border-x-2 border-green-500/50"></div>
-                            <div class="absolute top-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-red-600 border-2 border-white shadow-lg" id="gameBall" style="left:0px"></div>
-                        </div>
-                        <button id="gameSwingBtn" class="w-full gradient-bg py-3 rounded-xl text-white font-bold text-lg transition btn-pop shadow-lg shadow-orange-500/20">SWING!</button>
-                        <p class="text-center text-2xl font-bold mt-3 h-8" id="gameLastResult"></p>
-                    </div>
-
-                    <div id="gameOverArea" class="hidden text-center py-4">
-                        <p class="text-gray-400 text-sm mb-1">Innings over!</p>
-                        <p class="text-4xl font-bold text-orange-400 mb-4"><span id="gameFinalScore">0</span> runs</p>
-                        <button id="gamePlayAgainBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white font-medium transition btn-pop shadow-lg shadow-orange-500/20">Play Again</button>
-                    </div>
-                </div>
-
-                <div class="mt-5">
-                    <h3 class="text-white font-semibold mb-3 text-sm">Top Scorers</h3>
-                    <div class="space-y-2" id="gameLeaderboard"></div>
-                </div>
-            </div>
-
-            <div class="glass rounded-2xl p-4 sm:p-6 mt-4 sm:mt-6 animate-fade-in-up stagger-5">
                 <div class="flex items-center gap-3 mb-4">
                     <div class="icon-badge gradient-bg shrink-0">
                         <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
