@@ -112,7 +112,9 @@ db.ready = (async () => {
       member_id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       mobile TEXT,
+      whatsapp TEXT,
       address TEXT,
+      location TEXT,
       password_hash TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'member',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -122,7 +124,9 @@ db.ready = (async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       mobile TEXT NOT NULL,
+      whatsapp TEXT,
       address TEXT,
+      location TEXT,
       status TEXT NOT NULL DEFAULT 'pending',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -151,6 +155,20 @@ db.ready = (async () => {
     );
   `);
 
+  // Databases created before whatsapp/location existed (e.g. the live
+  // Render deploy) won't get them from CREATE TABLE IF NOT EXISTS above,
+  // so add them here if missing.
+  function ensureColumn(table, column, definition) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all();
+    if (!cols.some(c => c.name === column)) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    }
+  }
+  ensureColumn('members', 'whatsapp', 'TEXT');
+  ensureColumn('members', 'location', 'TEXT');
+  ensureColumn('registrations', 'whatsapp', 'TEXT');
+  ensureColumn('registrations', 'location', 'TEXT');
+
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
   if (memberCount === 0) {
     const passwordHash = bcrypt.hashSync('password', 10);
@@ -161,5 +179,7 @@ db.ready = (async () => {
     console.log('Seeded default admin: brahmastra01 / password');
   }
 })();
+
+db.LOCATIONS = ['India', 'UAE', 'Qatar', 'Canada', 'UK', 'USA', 'Other'];
 
 module.exports = db;

@@ -8,7 +8,7 @@ const router = express.Router();
 const MAIN_ADMIN = 'brahmastra01';
 
 router.get('/me', requireAuth, (req, res) => {
-  const member = db.prepare('SELECT member_id, name, mobile, address, role FROM members WHERE member_id = ?').get(req.user.memberId);
+  const member = db.prepare('SELECT member_id, name, mobile, whatsapp, address, location, role FROM members WHERE member_id = ?').get(req.user.memberId);
   if (!member) return res.status(404).json({ error: 'Member not found' });
 
   const monthlyPayments = db.prepare(`
@@ -20,32 +20,46 @@ router.get('/me', requireAuth, (req, res) => {
     memberId: member.member_id,
     memberName: member.name,
     mobile: member.mobile,
+    whatsapp: member.whatsapp,
     address: member.address,
+    location: member.location,
     role: member.role,
     monthlyPayments
   });
 });
 
 router.get('/', requireAuth, requireAdmin, (req, res) => {
-  const members = db.prepare('SELECT member_id, name, mobile, address, role FROM members ORDER BY name ASC').all();
-  res.json(members.map(m => ({ memberId: m.member_id, memberName: m.name, mobile: m.mobile, address: m.address, role: m.role })));
+  const members = db.prepare('SELECT member_id, name, mobile, whatsapp, address, location, role FROM members ORDER BY name ASC').all();
+  res.json(members.map(m => ({
+    memberId: m.member_id,
+    memberName: m.name,
+    mobile: m.mobile,
+    whatsapp: m.whatsapp,
+    address: m.address,
+    location: m.location,
+    role: m.role
+  })));
 });
 
 router.post('/', requireAuth, requireAdmin, (req, res) => {
-  const { memberId, memberName, password, role } = req.body;
-  if (!memberId || !memberName || !password) {
-    return res.status(400).json({ error: 'Member ID, name and password are required' });
+  const { mobile, memberName, password, role, whatsapp, location } = req.body;
+  if (!mobile || !memberName || !password) {
+    return res.status(400).json({ error: 'Mobile number, name and password are required' });
   }
   if (role && !['member', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
+  if (!location || !db.LOCATIONS.includes(location)) {
+    return res.status(400).json({ error: 'Please select a valid location' });
+  }
 
-  const existing = db.prepare('SELECT member_id FROM members WHERE member_id = ?').get(memberId);
-  if (existing) return res.status(409).json({ error: 'That Member ID is already in use' });
+  const trimmedMobile = mobile.trim();
+  const existing = db.prepare('SELECT member_id FROM members WHERE member_id = ? OR mobile = ?').get(trimmedMobile, trimmedMobile);
+  if (existing) return res.status(409).json({ error: 'This mobile number is already registered' });
 
   const passwordHash = bcrypt.hashSync(password, 10);
   db.prepare(`
-    INSERT INTO members (member_id, name, mobile, address, password_hash, role)
-    VALUES (?, ?, ?, '', ?, ?)
-  `).run(memberId, memberName, passwordHash, role || 'member');
+    INSERT INTO members (member_id, name, mobile, whatsapp, address, location, password_hash, role)
+    VALUES (?, ?, ?, ?, '', ?, ?, ?)
+  `).run(trimmedMobile, memberName, trimmedMobile, (whatsapp || '').trim(), location, passwordHash, role || 'member');
 
   res.status(201).json({ message: 'Member added' });
 });
@@ -57,18 +71,18 @@ router.put('/:id', requireAuth, requireAdmin, (req, res) => {
   const member = db.prepare('SELECT * FROM members WHERE member_id = ?').get(memberId);
   if (!member) return res.status(404).json({ error: 'Member not found' });
 
-  const { memberName, password, role } = req.body;
+  const { memberName, password, role, whatsapp, location } = req.body;
   if (!memberName || !memberName.trim()) return res.status(400).json({ error: 'Member name cannot be empty' });
   if (role && !['member', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
-
-  if (password && password.trim()) {
-    const passwordHash = bcrypt.hashSync(password, 10);
-    db.prepare('UPDATE members SET name = ?, role = ?, password_hash = ? WHERE member_id = ?')
-      .run(memberName.trim(), role || member.role, passwordHash, memberId);
-  } else {
-    db.prepare('UPDATE members SET name = ?, role = ? WHERE member_id = ?')
-      .run(memberName.trim(), role || member.role, memberId);
+  if (!location || !db.LOCATIONS.includes(location)) {
+    return res.status(400).json({ error: 'Please select a valid location' });
   }
+
+  const passwordHash = password && password.trim() ? bcrypt.hashSync(password, 10) : null;
+  db.prepare(`
+    UPDATE members SET name = ?, role = ?, whatsapp = ?, location = ?, password_hash = COALESCE(?, password_hash)
+    WHERE member_id = ?
+  `).run(memberName.trim(), role || member.role, (whatsapp || '').trim(), location, passwordHash, memberId);
 
   res.json({ message: 'Member updated' });
 });

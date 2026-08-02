@@ -33,6 +33,12 @@ function escapeHtml(str) {
     }[c]));
 }
 
+function isIndia(location) { return location === 'India'; }
+
+function locationBadge(location) {
+    return `<span class="px-2 py-0.5 rounded-full text-xs bg-white/10 text-gray-300">${escapeHtml(location || 'Unspecified')}</span>`;
+}
+
 function toast(message, type = 'info') {
     const colors = {
         success: 'bg-green-900/90 border-green-500 text-green-200',
@@ -142,6 +148,8 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             body: JSON.stringify({
                 name: document.getElementById('regName').value,
                 mobile: document.getElementById('regMobile').value,
+                whatsapp: document.getElementById('regWhatsapp').value,
+                location: document.getElementById('regLocation').value,
                 address: document.getElementById('regAddress').value
             })
         });
@@ -180,37 +188,49 @@ function memberActionsHtml(m) {
     ` : `<span class="text-gray-500 text-sm">Main Admin</span>`;
 }
 
+function memberRoleBadge(m) {
+    return `<span class="px-3 py-1 rounded-full text-sm ${m.role === 'admin' ? 'bg-orange-500/15 text-orange-300' : 'bg-blue-500/15 text-blue-300'}">${escapeHtml(m.role)}</span>`;
+}
+
+function renderMembersGroup(members, tableId, cardsId, showLocationColumn) {
+    document.getElementById(tableId).innerHTML = members.map(m => `
+        <tr class="border-b border-white/5 animate-fade-in">
+            <td class="py-3 px-4 text-white">${escapeHtml(m.memberId)}</td>
+            <td class="py-3 px-4 text-white">${escapeHtml(m.memberName)}</td>
+            ${showLocationColumn ? `<td class="py-3 px-4">${locationBadge(m.location)}</td>` : ''}
+            <td class="py-3 px-4">${memberRoleBadge(m)}</td>
+            <td class="py-3 px-4 text-center space-x-2">${memberActionsHtml(m)}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById(cardsId).innerHTML = members.map(m => `
+        <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
+            <div class="flex items-start justify-between gap-3 mb-3">
+                <div class="min-w-0">
+                    <p class="text-white font-semibold truncate">${escapeHtml(m.memberName)}</p>
+                    <p class="text-gray-500 text-xs">${escapeHtml(m.memberId)}</p>
+                </div>
+                <div class="flex flex-col items-end gap-1.5 shrink-0">
+                    ${memberRoleBadge(m)}
+                    ${showLocationColumn ? locationBadge(m.location) : ''}
+                </div>
+            </div>
+            <div class="flex gap-2">${memberActionsHtml(m)}</div>
+        </div>
+    `).join('');
+}
+
 async function loadMembers() {
     try {
         membersCache = await apiCall('/members');
+        const indiaMembers = membersCache.filter(m => isIndia(m.location));
+        const outsideMembers = membersCache.filter(m => !isIndia(m.location));
 
-        document.getElementById('membersTable').innerHTML = membersCache.map(m => `
-            <tr class="border-b border-white/5 animate-fade-in">
-                <td class="py-3 px-4 text-white">${escapeHtml(m.memberId)}</td>
-                <td class="py-3 px-4 text-white">${escapeHtml(m.memberName)}</td>
-                <td class="py-3 px-4">
-                    <span class="px-3 py-1 rounded-full text-sm ${m.role === 'admin' ? 'bg-orange-500/15 text-orange-300' : 'bg-blue-500/15 text-blue-300'}">
-                        ${escapeHtml(m.role)}
-                    </span>
-                </td>
-                <td class="py-3 px-4 text-center space-x-2">${memberActionsHtml(m)}</td>
-            </tr>
-        `).join('');
+        document.getElementById('membersIndiaCount').textContent = `(${indiaMembers.length})`;
+        document.getElementById('membersOutsideCount').textContent = `(${outsideMembers.length})`;
 
-        document.getElementById('membersCards').innerHTML = membersCache.map(m => `
-            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
-                <div class="flex items-start justify-between gap-3 mb-3">
-                    <div class="min-w-0">
-                        <p class="text-white font-semibold truncate">${escapeHtml(m.memberName)}</p>
-                        <p class="text-gray-500 text-xs">${escapeHtml(m.memberId)}</p>
-                    </div>
-                    <span class="shrink-0 px-2.5 py-1 rounded-full text-xs font-medium ${m.role === 'admin' ? 'bg-orange-500/15 text-orange-300' : 'bg-blue-500/15 text-blue-300'}">
-                        ${escapeHtml(m.role)}
-                    </span>
-                </div>
-                <div class="flex gap-2">${memberActionsHtml(m)}</div>
-            </div>
-        `).join('');
+        renderMembersGroup(indiaMembers, 'membersTableIndia', 'membersCardsIndia', false);
+        renderMembersGroup(outsideMembers, 'membersTableOutside', 'membersCardsOutside', true);
     } catch (error) {
         console.error('Load members error:', error);
     }
@@ -223,8 +243,11 @@ function handleMemberAction(e) {
     if (btn.dataset.action === 'edit-member') openEditModal(id);
     if (btn.dataset.action === 'delete-member') deleteMember(id);
 }
-document.getElementById('membersTable').addEventListener('click', handleMemberAction);
-document.getElementById('membersCards').addEventListener('click', handleMemberAction);
+['membersTableIndia', 'membersCardsIndia', 'membersTableOutside', 'membersCardsOutside'].forEach(id => {
+    document.getElementById(id).addEventListener('click', handleMemberAction);
+});
+
+let paymentsCache = [];
 
 async function loadPayments() {
     const month = parseInt(document.getElementById('paymentMonth').value);
@@ -232,6 +255,7 @@ async function loadPayments() {
 
     try {
         const rows = await apiCall(`/payments?month=${month}&year=${year}`);
+        paymentsCache = rows;
 
         document.getElementById('paymentsTable').innerHTML = rows.map(r => {
             const isPaid = r.status === 'paid';
@@ -309,6 +333,35 @@ async function savePayments() {
     }
 }
 
+function printPayments() {
+    const monthSelect = document.getElementById('paymentMonth');
+    const monthLabel = monthSelect.options[monthSelect.selectedIndex].textContent;
+    const year = document.getElementById('paymentYear').value;
+
+    const paidCount = paymentsCache.filter(r => r.status === 'paid').length;
+    const totalCollected = paymentsCache.filter(r => r.status === 'paid').reduce((sum, r) => sum + r.amount, 0);
+
+    const rowsHtml = paymentsCache.map(r => `
+        <tr>
+            <td>${escapeHtml(r.memberName)}</td>
+            <td>₹${r.amount}</td>
+            <td>${r.status === 'paid' ? 'Paid' : 'Not Paid'}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('printSection').innerHTML = `
+        <h1 style="font-size:20px;font-weight:bold;">Brahmastra Arts &amp; Sports Club</h1>
+        <h2 style="font-size:16px;margin-top:4px;">Payment Report &mdash; ${monthLabel} ${year}</h2>
+        <p style="margin-top:8px;">Total Members: ${paymentsCache.length} &nbsp; | &nbsp; Paid: ${paidCount} &nbsp; | &nbsp; Collected: ₹${totalCollected}</p>
+        <table>
+            <thead><tr><th>Member</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        <p style="margin-top:16px;font-size:12px;color:#555;">Generated ${new Date().toLocaleString('en-IN')}</p>
+    `;
+    window.print();
+}
+
 async function loadExpenses() {
     try {
         const expenses = await apiCall('/expenses');
@@ -364,32 +417,47 @@ function registrationActionsHtml(r) {
     `;
 }
 
+function renderRegistrationsGroup(regs, tableId, cardsId, showLocationColumn) {
+    document.getElementById(tableId).innerHTML = regs.map(r => `
+        <tr class="border-b border-white/5 animate-fade-in">
+            <td class="py-3 px-4 text-white">${escapeHtml(r.name)}</td>
+            <td class="py-3 px-4 text-white">${escapeHtml(r.mobile)}</td>
+            <td class="py-3 px-4 text-gray-400">${escapeHtml(r.whatsapp || '-')}</td>
+            ${showLocationColumn ? `<td class="py-3 px-4">${locationBadge(r.location)}</td>` : ''}
+            <td class="py-3 px-4 text-gray-400">${escapeHtml(r.address || '-')}</td>
+            <td class="py-3 px-4 text-center space-x-2">${registrationActionsHtml(r)}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById(cardsId).innerHTML = regs.map(r => `
+        <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
+            <div class="flex items-start justify-between gap-3 mb-1">
+                <p class="text-white font-semibold">${escapeHtml(r.name)}</p>
+                ${showLocationColumn ? locationBadge(r.location) : ''}
+            </div>
+            <p class="text-gray-500 text-xs mb-1">Mobile: ${escapeHtml(r.mobile)}${r.whatsapp ? ` &middot; WhatsApp: ${escapeHtml(r.whatsapp)}` : ''}</p>
+            <p class="text-gray-400 text-sm mb-3">${escapeHtml(r.address || 'No address given')}</p>
+            <div class="flex gap-2">${registrationActionsHtml(r)}</div>
+        </div>
+    `).join('');
+}
+
 async function loadRegistrations() {
     try {
         registrationsCache = await apiCall('/registrations');
         const empty = document.getElementById('noRegistrations');
+        const indiaRegs = registrationsCache.filter(r => isIndia(r.location));
+        const outsideRegs = registrationsCache.filter(r => !isIndia(r.location));
 
-        document.getElementById('registrationsTable').innerHTML = registrationsCache.map(r => `
-            <tr class="border-b border-white/5 animate-fade-in">
-                <td class="py-3 px-4 text-white">${escapeHtml(r.name)}</td>
-                <td class="py-3 px-4 text-white">${escapeHtml(r.mobile)}</td>
-                <td class="py-3 px-4 text-gray-400">${escapeHtml(r.address || '-')}</td>
-                <td class="py-3 px-4 text-center space-x-2">${registrationActionsHtml(r)}</td>
-            </tr>
-        `).join('');
+        document.getElementById('registrationsIndiaCount').textContent = `(${indiaRegs.length})`;
+        document.getElementById('registrationsOutsideCount').textContent = `(${outsideRegs.length})`;
 
-        document.getElementById('registrationsCards').innerHTML = registrationsCache.map(r => `
-            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
-                <p class="text-white font-semibold">${escapeHtml(r.name)}</p>
-                <p class="text-gray-500 text-xs mb-1">${escapeHtml(r.mobile)}</p>
-                <p class="text-gray-400 text-sm mb-3">${escapeHtml(r.address || 'No address given')}</p>
-                <div class="flex gap-2">${registrationActionsHtml(r)}</div>
-            </div>
-        `).join('');
-
-        empty.classList.toggle('hidden', registrationsCache.length > 0);
+        renderRegistrationsGroup(indiaRegs, 'registrationsTableIndia', 'registrationsCardsIndia', false);
+        renderRegistrationsGroup(outsideRegs, 'registrationsTableOutside', 'registrationsCardsOutside', true);
 
         const count = registrationsCache.length;
+        empty.classList.toggle('hidden', count > 0);
+
         const badge = document.getElementById('pendingBadge');
         badge.textContent = count;
         badge.classList.toggle('hidden', count === 0);
@@ -407,15 +475,16 @@ function handleRegistrationAction(e) {
     if (btn.dataset.action === 'approve-registration') openApproveModal(id);
     if (btn.dataset.action === 'reject-registration') rejectRegistration(id);
 }
-document.getElementById('registrationsTable').addEventListener('click', handleRegistrationAction);
-document.getElementById('registrationsCards').addEventListener('click', handleRegistrationAction);
+['registrationsTableIndia', 'registrationsCardsIndia', 'registrationsTableOutside', 'registrationsCardsOutside'].forEach(id => {
+    document.getElementById(id).addEventListener('click', handleRegistrationAction);
+});
 
 function openApproveModal(id) {
     const registration = registrationsCache.find(r => String(r.id) === String(id));
     if (!registration) return;
     currentApprovingRegistration = registration;
     document.getElementById('approveRegName').textContent = registration.name;
-    document.getElementById('approveMemberId').value = '';
+    document.getElementById('approveRegMobile').textContent = registration.mobile;
     document.getElementById('approvePassword').value = '';
     document.getElementById('approveRole').value = 'member';
     openModal('approveRegistrationModal');
@@ -443,6 +512,8 @@ function openEditModal(memberId) {
     document.getElementById('editMemberId').value = member.memberId;
     document.getElementById('editMemberName').value = member.memberName;
     document.getElementById('editMemberRole').value = member.role;
+    document.getElementById('editMemberWhatsapp').value = member.whatsapp || '';
+    document.getElementById('editMemberLocation').value = member.location || 'India';
     document.getElementById('editMemberPassword').value = '';
 
     const roleSelect = document.getElementById('editMemberRole');
@@ -463,6 +534,8 @@ async function updateMember() {
     const memberName = document.getElementById('editMemberName').value;
     const password = document.getElementById('editMemberPassword').value;
     const role = document.getElementById('editMemberRole').value;
+    const whatsapp = document.getElementById('editMemberWhatsapp').value;
+    const location = document.getElementById('editMemberLocation').value;
 
     if (!memberName.trim()) {
         toast('Member name cannot be empty', 'error');
@@ -470,7 +543,7 @@ async function updateMember() {
     }
 
     try {
-        const updateData = { memberName, role };
+        const updateData = { memberName, role, whatsapp, location };
         if (password.trim()) updateData.password = password;
 
         await apiCall(`/members/${memberId}`, {
@@ -617,9 +690,11 @@ document.getElementById('addMemberForm').addEventListener('submit', async (e) =>
         await apiCall('/members', {
             method: 'POST',
             body: JSON.stringify({
-                memberId: document.getElementById('newMemberId').value,
+                mobile: document.getElementById('newMemberMobile').value,
                 memberName: document.getElementById('newMemberName').value,
                 password: document.getElementById('newMemberPassword').value,
+                whatsapp: document.getElementById('newMemberWhatsapp').value,
+                location: document.getElementById('newMemberLocation').value,
                 role: document.getElementById('newMemberRole').value
             })
         });
@@ -670,7 +745,6 @@ document.getElementById('approveRegistrationForm').addEventListener('submit', as
         await apiCall(`/registrations/${currentApprovingRegistration.id}/approve`, {
             method: 'POST',
             body: JSON.stringify({
-                memberId: document.getElementById('approveMemberId').value,
                 password: document.getElementById('approvePassword').value,
                 role: document.getElementById('approveRole').value
             })
@@ -678,7 +752,7 @@ document.getElementById('approveRegistrationForm').addEventListener('submit', as
         closeModal('approveRegistrationModal');
         e.target.reset();
         await Promise.all([loadRegistrations(), loadMembers(), loadDashboard()]);
-        toast('Registration approved! Share the Member ID and password with them.', 'success');
+        toast('Registration approved! Share the password with them — their mobile number is their login ID.', 'success');
     } catch (error) {
         toast(error.message, 'error');
     }
@@ -722,6 +796,7 @@ function populateYears() {
 document.getElementById('addMemberBtn').addEventListener('click', () => openModal('addMemberModal'));
 document.getElementById('addExpenseBtn').addEventListener('click', () => openModal('addExpenseModal'));
 document.getElementById('savePaymentsBtn').addEventListener('click', savePayments);
+document.getElementById('printPaymentsBtn').addEventListener('click', printPayments);
 document.getElementById('paymentMonth').addEventListener('change', loadPayments);
 document.getElementById('paymentYear').addEventListener('change', loadPayments);
 document.getElementById('logoutBtn').addEventListener('click', logout);

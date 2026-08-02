@@ -97,6 +97,15 @@
         table { border-collapse: collapse; }
         ::-webkit-scrollbar { height: 6px; width: 6px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,122,26,0.35); border-radius: 999px; }
+
+        #printSection { display: none; }
+        @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { display: block; position: absolute; left: 0; top: 0; width: 100%; padding: 24px; color: #000; background: #fff; }
+            #printSection table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+            #printSection th, #printSection td { border: 1px solid #999; padding: 6px 10px; text-align: left; }
+        }
     </style>
 </head>
 <body class="text-gray-100">
@@ -119,7 +128,7 @@
 
                 <form id="loginForm" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-300 mb-2">User ID</label>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Mobile Number</label>
                         <input type="text" id="userId" required autocomplete="username" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
                     </div>
                     <div>
@@ -154,6 +163,23 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Mobile Number</label>
                         <input type="tel" id="regMobile" required class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                        <p class="text-gray-500 text-xs mt-1.5">This becomes your login ID once approved.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">WhatsApp Number</label>
+                        <input type="tel" id="regWhatsapp" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Current Location</label>
+                        <select id="regLocation" required class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                            <option value="India">India</option>
+                            <option value="UAE">UAE</option>
+                            <option value="Qatar">Qatar</option>
+                            <option value="Canada">Canada</option>
+                            <option value="UK">UK</option>
+                            <option value="USA">USA</option>
+                            <option value="Other">Other</option>
+                        </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Address</label>
@@ -179,7 +205,7 @@
                     </svg>
                 </div>
                 <h2 class="text-2xl font-bold text-white mb-2">Registration Submitted</h2>
-                <p class="text-gray-400 mb-6">An admin will review your request. You'll be able to log in once approved and given your Member ID and password.</p>
+                <p class="text-gray-400 mb-6">An admin will review your request. You'll be able to log in with your mobile number once approved and given a password.</p>
                 <button id="pendingBackToLoginBtn" class="gradient-bg text-white font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition btn-pop">Back to Login</button>
             </div>
         </div>
@@ -247,20 +273,38 @@
                     <button id="addMemberBtn" class="gradient-bg px-4 sm:px-6 py-2 rounded-xl text-white transition btn-pop text-sm sm:text-base font-medium shadow-lg shadow-orange-500/20">+ Add Member</button>
                 </div>
 
-                <div class="hidden md:block overflow-x-auto">
+                <h3 class="text-white font-semibold mb-3 flex items-center gap-2">India <span id="membersIndiaCount" class="text-gray-500 text-sm font-normal">(0)</span></h3>
+                <div class="hidden md:block overflow-x-auto mb-6">
                     <table class="w-full">
                         <thead>
                             <tr class="border-b border-white/10">
-                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="membersTable"></tbody>
+                        <tbody id="membersTableIndia"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3" id="membersCards"></div>
+                <div class="md:hidden space-y-3 mb-6" id="membersCardsIndia"></div>
+
+                <h3 class="text-white font-semibold mb-3 flex items-center gap-2">Outside India <span id="membersOutsideCount" class="text-gray-500 text-sm font-normal">(0)</span></h3>
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Location</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTableOutside"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="membersCardsOutside"></div>
             </div>
 
             <!-- Payments Section -->
@@ -283,7 +327,13 @@
                     </div>
                 </div>
 
-                <button id="savePaymentsBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white mb-5 transition btn-pop font-medium shadow-lg shadow-orange-500/20 w-full sm:w-auto">Save Changes</button>
+                <div class="flex flex-col sm:flex-row gap-3 mb-5">
+                    <button id="savePaymentsBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white transition btn-pop font-medium shadow-lg shadow-orange-500/20 w-full sm:w-auto">Save Changes</button>
+                    <button id="printPaymentsBtn" type="button" class="bg-white/10 px-6 py-2.5 rounded-xl text-white transition btn-pop font-medium w-full sm:w-auto flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"></path></svg>
+                        Print
+                    </button>
+                </div>
 
                 <div class="hidden md:block overflow-x-auto">
                     <table class="w-full">
@@ -329,22 +379,42 @@
             <!-- Registrations Section -->
             <div id="registrationsTab" class="tab-content glass rounded-2xl p-4 sm:p-6 hidden">
                 <h2 class="text-lg sm:text-xl font-bold text-white mb-5">Pending Registrations</h2>
+                <p id="noRegistrations" class="hidden text-gray-400 text-center py-8">No pending registrations</p>
 
+                <h3 class="text-white font-semibold mb-3 flex items-center gap-2">India <span id="registrationsIndiaCount" class="text-gray-500 text-sm font-normal">(0)</span></h3>
+                <div class="hidden md:block overflow-x-auto mb-6">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">WhatsApp</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Address</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registrationsTableIndia"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3 mb-6" id="registrationsCardsIndia"></div>
+
+                <h3 class="text-white font-semibold mb-3 flex items-center gap-2">Outside India <span id="registrationsOutsideCount" class="text-gray-500 text-sm font-normal">(0)</span></h3>
                 <div class="hidden md:block overflow-x-auto">
                     <table class="w-full">
                         <thead>
                             <tr class="border-b border-white/10">
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">WhatsApp</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Location</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Address</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="registrationsTable"></tbody>
+                        <tbody id="registrationsTableOutside"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3" id="registrationsCards"></div>
-                <p id="noRegistrations" class="hidden text-gray-400 text-center py-8">No pending registrations</p>
+                <div class="md:hidden space-y-3" id="registrationsCardsOutside"></div>
             </div>
         </div>
 
@@ -417,8 +487,9 @@
             <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Add New Member</h3>
             <form id="addMemberForm" class="space-y-4">
                 <div>
-                    <label class="block text-gray-400 mb-2 text-sm">Member ID</label>
-                    <input type="text" id="newMemberId" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                    <label class="block text-gray-400 mb-2 text-sm">Mobile Number</label>
+                    <input type="tel" id="newMemberMobile" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                    <p class="text-gray-500 text-xs mt-1.5">This becomes their login ID.</p>
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Name</label>
@@ -427,6 +498,22 @@
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Password</label>
                     <input type="password" id="newMemberPassword" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">WhatsApp Number</label>
+                    <input type="tel" id="newMemberWhatsapp" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Current Location</label>
+                    <select id="newMemberLocation" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="India">India</option>
+                        <option value="UAE">UAE</option>
+                        <option value="Qatar">Qatar</option>
+                        <option value="Canada">Canada</option>
+                        <option value="UK">UK</option>
+                        <option value="USA">USA</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Role</label>
@@ -449,7 +536,7 @@
             <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Edit Member</h3>
             <form id="editMemberForm" class="space-y-4">
                 <div>
-                    <label class="block text-gray-400 mb-2 text-sm">Member ID</label>
+                    <label class="block text-gray-400 mb-2 text-sm">Mobile Number (login ID)</label>
                     <input type="text" id="editMemberId" disabled class="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-gray-500 cursor-not-allowed">
                 </div>
                 <div>
@@ -459,6 +546,22 @@
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Password (Leave blank to keep current)</label>
                     <input type="password" id="editMemberPassword" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">WhatsApp Number</label>
+                    <input type="tel" id="editMemberWhatsapp" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Current Location</label>
+                    <select id="editMemberLocation" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="India">India</option>
+                        <option value="UAE">UAE</option>
+                        <option value="Qatar">Qatar</option>
+                        <option value="Canada">Canada</option>
+                        <option value="UK">UK</option>
+                        <option value="USA">USA</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Role</label>
@@ -526,11 +629,11 @@
     <div id="approveRegistrationModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
         <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
             <h3 class="text-xl sm:text-2xl font-bold text-white mb-2">Approve Registration</h3>
-            <p class="text-gray-400 mb-6 text-sm">Assign a Member ID and password. Share these with <span id="approveRegName" class="text-orange-400"></span> once approved.</p>
+            <p class="text-gray-400 mb-6 text-sm">Set a password for <span id="approveRegName" class="text-orange-400"></span>. Share it with them once approved.</p>
             <form id="approveRegistrationForm" class="space-y-4">
                 <div>
-                    <label class="block text-gray-400 mb-2 text-sm">Member ID</label>
-                    <input type="text" id="approveMemberId" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                    <label class="block text-gray-400 mb-2 text-sm">Login ID (mobile number)</label>
+                    <p id="approveRegMobile" class="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-gray-300"></p>
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Password</label>
@@ -562,6 +665,9 @@
             </div>
         </div>
     </div>
+
+    <!-- Print-only report (populated by printPayments(), see app.js) -->
+    <div id="printSection"></div>
 
     <!-- Toast Container -->
     <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-auto md:right-4 z-[60] flex flex-col gap-3 items-stretch md:items-end"></div>
