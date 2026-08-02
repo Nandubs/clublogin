@@ -951,36 +951,52 @@ function payButtonHtml(p) {
 
 let currentMemberProfile = null;
 
+const MEMBER_PAYMENTS_INITIAL_COUNT = 4;
+let memberPaymentsShowAll = false;
+
+function renderMemberPaymentsHistory() {
+    const payments = memberPaymentsCache;
+    const visible = memberPaymentsShowAll ? payments : payments.slice(0, MEMBER_PAYMENTS_INITIAL_COUNT);
+
+    document.getElementById('memberPaymentsTable').innerHTML = visible.map(p => `
+        <tr class="border-b border-white/5 animate-fade-in">
+            <td class="py-3 px-4 text-white">${monthNames[p.month]}</td>
+            <td class="py-3 px-4 text-white">${p.year}</td>
+            <td class="py-3 px-4 text-center text-white">₹${p.amount || 100}</td>
+            <td class="py-3 px-4 text-center">
+                <span class="${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
+            </td>
+            <td class="py-3 px-4 text-center">${payButtonHtml(p)}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('memberPaymentsCards').innerHTML = visible.map(p => `
+        <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in flex items-center justify-between gap-3">
+            <div class="min-w-0">
+                <p class="text-white font-semibold">${monthNames[p.month]} ${p.year}</p>
+                <p class="text-gray-500 text-xs">₹${p.amount || 100}</p>
+                <span class="text-sm font-medium ${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
+            </div>
+            ${payButtonHtml(p)}
+        </div>
+    `).join('');
+
+    document.getElementById('loadMorePaymentsBtn').classList.toggle('hidden', memberPaymentsShowAll || payments.length <= MEMBER_PAYMENTS_INITIAL_COUNT);
+}
+
+document.getElementById('loadMorePaymentsBtn').addEventListener('click', () => {
+    memberPaymentsShowAll = true;
+    renderMemberPaymentsHistory();
+});
+
 async function loadMemberPayments() {
     try {
         const data = await apiCall('/members/me');
         currentMemberProfile = data;
-        const payments = data.monthlyPayments || [];
-        memberPaymentsCache = payments;
+        memberPaymentsCache = data.monthlyPayments || [];
+        memberPaymentsShowAll = false;
         renderPaymentCalendar();
-
-        document.getElementById('memberPaymentsTable').innerHTML = payments.map(p => `
-            <tr class="border-b border-white/5 animate-fade-in">
-                <td class="py-3 px-4 text-white">${monthNames[p.month]}</td>
-                <td class="py-3 px-4 text-white">${p.year}</td>
-                <td class="py-3 px-4 text-center text-white">₹${p.amount || 100}</td>
-                <td class="py-3 px-4 text-center">
-                    <span class="${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
-                </td>
-                <td class="py-3 px-4 text-center">${payButtonHtml(p)}</td>
-            </tr>
-        `).join('');
-
-        document.getElementById('memberPaymentsCards').innerHTML = payments.map(p => `
-            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in flex items-center justify-between gap-3">
-                <div class="min-w-0">
-                    <p class="text-white font-semibold">${monthNames[p.month]} ${p.year}</p>
-                    <p class="text-gray-500 text-xs">₹${p.amount || 100}</p>
-                    <span class="text-sm font-medium ${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
-                </div>
-                ${payButtonHtml(p)}
-            </div>
-        `).join('');
+        renderMemberPaymentsHistory();
     } catch (error) {
         console.error('Load member payments error:', error);
     }
