@@ -259,74 +259,158 @@ function handleMemberAction(e) {
 });
 
 let paymentsCache = [];
+let paymentsFilter = 'not_paid';
+let paymentsSearchTerm = '';
+
+function initials(name) {
+    return (name || '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
+}
+
+function paymentToggleHtml(r) {
+    const isPaid = r.status === 'paid';
+    const icon = isPaid
+        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>'
+        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>';
+    return `
+        <button data-action="toggle-payment" data-member="${escapeHtml(r.memberId)}" class="px-3.5 py-2 rounded-full text-sm font-semibold transition btn-pop flex items-center gap-1.5 shrink-0 ${isPaid ? 'bg-green-500/15 text-green-400 border border-green-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg>
+            ${isPaid ? 'Paid' : 'Not Paid'}
+        </button>
+    `;
+}
+
+function paymentRemindHtml(r) {
+    if (r.status === 'paid') return '';
+    if (r.reminded) {
+        return `
+            <span title="A reminder was already sent this month" class="text-gray-500 p-2 bg-white/5 rounded-lg shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 13l4 4L19 7"></path></svg>
+            </span>
+        `;
+    }
+    return `
+        <button data-action="remind-payment" data-member="${escapeHtml(r.memberId)}" title="Send payment reminder" class="text-orange-400 hover:text-orange-300 p-2 bg-orange-500/10 rounded-lg transition btn-pop shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+        </button>
+    `;
+}
+
+function paymentRowHtml(r) {
+    return `
+        <div class="bg-black/30 border border-white/10 rounded-xl p-3 flex items-center gap-3 animate-fade-in" data-row-member="${escapeHtml(r.memberId)}">
+            <div class="w-9 h-9 rounded-full gradient-bg flex items-center justify-center text-white font-bold text-xs shrink-0">${escapeHtml(initials(r.memberName))}</div>
+            <div class="flex-1 min-w-0">
+                <p class="text-white font-medium truncate">${escapeHtml(r.memberName)}</p>
+                <p class="text-gray-500 text-xs">₹${r.amount}</p>
+            </div>
+            ${paymentRemindHtml(r)}
+            ${paymentToggleHtml(r)}
+        </div>
+    `;
+}
+
+function paymentsMatchesFilter(r) {
+    if (paymentsFilter !== 'all' && r.status !== paymentsFilter) return false;
+    const term = paymentsSearchTerm.trim().toLowerCase();
+    if (term && !r.memberName.toLowerCase().includes(term)) return false;
+    return true;
+}
+
+function renderPaymentsList() {
+    const filtered = paymentsCache.filter(paymentsMatchesFilter);
+
+    document.getElementById('paymentsList').innerHTML = filtered.map(paymentRowHtml).join('');
+    document.getElementById('paymentsEmptyState').classList.toggle('hidden', filtered.length > 0);
+
+    document.querySelectorAll('#paymentsList [data-action="toggle-payment"]').forEach(btn => {
+        btn.addEventListener('click', () => togglePayment(btn.dataset.member));
+    });
+    document.querySelectorAll('#paymentsList [data-action="remind-payment"]').forEach(btn => {
+        btn.addEventListener('click', () => remindPayment(btn.dataset.member));
+    });
+}
+
+function updatePaymentsStats() {
+    const total = paymentsCache.length;
+    const paid = paymentsCache.filter(r => r.status === 'paid').length;
+    const collected = paymentsCache.filter(r => r.status === 'paid').reduce((sum, r) => sum + r.amount, 0);
+
+    document.getElementById('paymentsPaidCount').textContent = paid;
+    document.getElementById('paymentsTotalCount').textContent = total;
+    document.getElementById('paymentsCollected').textContent = collected.toLocaleString('en-IN');
+    document.getElementById('paymentsProgressBar').style.width = total ? `${(paid / total) * 100}%` : '0%';
+}
 
 async function loadPayments() {
     const month = parseInt(document.getElementById('paymentMonth').value);
     const year = parseInt(document.getElementById('paymentYear').value);
 
     try {
-        const rows = await apiCall(`/payments?month=${month}&year=${year}`);
-        paymentsCache = rows;
-
-        function remindButtonHtml(r) {
-            return r.status === 'paid'
-                ? '<span class="text-gray-600 text-sm">&mdash;</span>'
-                : `<button data-action="remind-payment" data-member="${escapeHtml(r.memberId)}" class="text-orange-400 hover:text-orange-300 px-3 py-1.5 bg-orange-500/10 rounded-lg transition btn-pop text-sm font-medium">Remind</button>`;
-        }
-
-        document.getElementById('paymentsTable').innerHTML = rows.map(r => {
-            const isPaid = r.status === 'paid';
-            return `
-                <tr class="border-b border-white/5 animate-fade-in">
-                    <td class="py-3 px-4 text-white">${escapeHtml(r.memberName)}</td>
-                    <td class="py-3 px-4 text-center text-white">₹${r.amount}</td>
-                    <td class="py-3 px-4 text-center">
-                        <label class="flex items-center justify-center cursor-pointer">
-                            <input type="checkbox" class="payment-check accent-orange-500 w-4 h-4" data-member="${escapeHtml(r.memberId)}" ${isPaid ? 'checked' : ''}>
-                            <span class="ml-2 ${isPaid ? 'text-green-400' : 'text-red-400'}">${isPaid ? 'Paid' : 'Not Paid'}</span>
-                        </label>
-                    </td>
-                    <td class="py-3 px-4 text-center">${remindButtonHtml(r)}</td>
-                </tr>
-            `;
-        }).join('');
-
-        document.getElementById('paymentsCards').innerHTML = rows.map(r => {
-            const isPaid = r.status === 'paid';
-            return `
-                <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in flex items-center justify-between gap-3">
-                    <div class="min-w-0">
-                        <p class="text-white font-semibold truncate">${escapeHtml(r.memberName)}</p>
-                        <p class="text-gray-500 text-xs">₹${r.amount}</p>
-                    </div>
-                    <label class="flex items-center gap-2 cursor-pointer shrink-0">
-                        <input type="checkbox" class="payment-check accent-orange-500 w-5 h-5" data-member="${escapeHtml(r.memberId)}" ${isPaid ? 'checked' : ''}>
-                        <span class="text-sm font-medium ${isPaid ? 'text-green-400' : 'text-red-400'}">${isPaid ? 'Paid' : 'Not Paid'}</span>
-                    </label>
-                    ${remindButtonHtml(r)}
-                </div>
-            `;
-        }).join('');
-
-        document.querySelectorAll('.payment-check').forEach(cb => {
-            cb.addEventListener('change', () => {
-                const label = cb.parentElement.querySelector('span');
-                label.textContent = cb.checked ? 'Paid' : 'Not Paid';
-                label.classList.toggle('text-green-400', cb.checked);
-                label.classList.toggle('text-red-400', !cb.checked);
-                document.querySelectorAll(`.payment-check[data-member="${cb.dataset.member}"]`).forEach(other => {
-                    if (other !== cb) other.checked = cb.checked;
-                });
-            });
-        });
-
-        document.querySelectorAll('[data-action="remind-payment"]').forEach(btn => {
-            btn.addEventListener('click', () => remindPayment(btn.dataset.member));
-        });
+        paymentsCache = await apiCall(`/payments?month=${month}&year=${year}`);
+        renderPaymentsList();
+        updatePaymentsStats();
     } catch (error) {
         console.error('Load payments error:', error);
     }
 }
+
+async function togglePayment(memberId) {
+    const month = parseInt(document.getElementById('paymentMonth').value);
+    const year = parseInt(document.getElementById('paymentYear').value);
+    const record = paymentsCache.find(r => r.memberId === memberId);
+    if (!record) return;
+
+    const previousStatus = record.status;
+    const newStatus = previousStatus === 'paid' ? 'not_paid' : 'paid';
+
+    // If this member no longer matches the active filter/search after the
+    // status flips, animate the row sliding out before re-rendering the list
+    // — makes the "moved to the Paid/Unpaid list" transition visible instead
+    // of the row just vanishing on the next render.
+    const rowEl = document.querySelector(`[data-row-member="${CSS.escape(memberId)}"]`);
+    record.status = newStatus;
+    const stillVisible = paymentsMatchesFilter(record);
+
+    if (rowEl && !stillVisible) {
+        rowEl.classList.add('payment-row-exit');
+        setTimeout(() => renderPaymentsList(), 280);
+    } else {
+        renderPaymentsList();
+    }
+    updatePaymentsStats();
+
+    try {
+        await apiCall(`/payments/${encodeURIComponent(memberId)}`, {
+            method: 'PUT',
+            body: JSON.stringify({ month, year, status: newStatus })
+        });
+        toast(`${record.memberName} marked as ${newStatus === 'paid' ? 'Paid' : 'Not Paid'}`, 'success');
+        loadDashboard();
+    } catch (error) {
+        record.status = previousStatus;
+        renderPaymentsList();
+        updatePaymentsStats();
+        toast(error.message, 'error');
+    }
+}
+
+document.getElementById('paymentSearch').addEventListener('input', (e) => {
+    paymentsSearchTerm = e.target.value;
+    renderPaymentsList();
+});
+
+document.querySelectorAll('.payment-filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        paymentsFilter = btn.dataset.filter;
+        document.querySelectorAll('.payment-filter-btn').forEach(b => {
+            b.classList.toggle('bg-orange-500', b === btn);
+            b.classList.toggle('text-white', b === btn);
+            b.classList.toggle('bg-white/10', b !== btn);
+            b.classList.toggle('text-gray-300', b !== btn);
+        });
+        renderPaymentsList();
+    });
+});
 
 async function remindPayment(memberId) {
     const month = parseInt(document.getElementById('paymentMonth').value);
@@ -337,6 +421,11 @@ async function remindPayment(memberId) {
             method: 'POST',
             body: JSON.stringify({ memberId, month, year })
         });
+        if (result.reminded) {
+            const record = paymentsCache.find(r => r.memberId === memberId);
+            if (record) record.reminded = true;
+            renderPaymentsList();
+        }
         toast(result.smsSent ? 'Reminder SMS sent!' : 'Reminder failed to send — try contacting them directly.', result.smsSent ? 'success' : 'info');
     } catch (error) {
         toast(error.message, 'error');
@@ -346,10 +435,10 @@ async function remindPayment(memberId) {
 async function remindAllUnpaid() {
     const month = parseInt(document.getElementById('paymentMonth').value);
     const year = parseInt(document.getElementById('paymentYear').value);
-    const unpaid = paymentsCache.filter(r => r.status !== 'paid');
+    const unpaid = paymentsCache.filter(r => r.status !== 'paid' && !r.reminded);
 
     if (unpaid.length === 0) {
-        toast('Everyone has paid for this month!', 'info');
+        toast('Everyone has paid, or already been reminded, for this month!', 'info');
         return;
     }
 
@@ -364,41 +453,15 @@ async function remindAllUnpaid() {
                 method: 'POST',
                 body: JSON.stringify({ memberId: r.memberId, month, year })
             });
+            if (result.reminded) r.reminded = true;
             if (result.smsSent) sent++; else failed++;
         } catch (error) {
             failed++;
         }
     }
 
+    renderPaymentsList();
     toast(`Reminders sent: ${sent}${failed ? `, failed: ${failed}` : ''}`, failed ? 'info' : 'success');
-}
-
-async function savePayments() {
-    const month = parseInt(document.getElementById('paymentMonth').value);
-    const year = parseInt(document.getElementById('paymentYear').value);
-
-    // Table and mobile-card checkboxes both exist in the DOM (one hidden via
-    // responsive classes) and are kept in sync, so dedupe by memberId here.
-    const paymentsByMember = new Map();
-    document.querySelectorAll('.payment-check').forEach(cb => {
-        paymentsByMember.set(cb.dataset.member, {
-            memberId: cb.dataset.member,
-            status: cb.checked ? 'paid' : 'not_paid',
-            amount: 100
-        });
-    });
-    const payments = [...paymentsByMember.values()];
-
-    try {
-        await apiCall('/payments', {
-            method: 'POST',
-            body: JSON.stringify({ month, year, payments })
-        });
-        toast('Payments saved!', 'success');
-        await loadDashboard();
-    } catch (error) {
-        toast(error.message, 'error');
-    }
 }
 
 function printPayments() {
@@ -430,6 +493,28 @@ function printPayments() {
     window.print();
 }
 
+function donationsSummaryHtml(donations) {
+    if (!donations || donations.length === 0) return '<span class="text-gray-600">&mdash;</span>';
+    const total = donations.reduce((sum, d) => sum + d.amount, 0);
+    const title = donations.map(d => `${d.purpose}: ₹${d.amount}`).join(', ');
+    return `<span title="${escapeHtml(title)}" class="text-white">₹${total} <span class="text-gray-500 text-xs">(${donations.length})</span></span>`;
+}
+
+function donationsListHtml(donations) {
+    if (!donations || donations.length === 0) return '';
+    return `
+        <div class="mt-3 pt-2 border-t border-white/10 space-y-1">
+            <p class="text-gray-500 text-xs font-medium mb-1">Donations</p>
+            ${donations.map(d => `
+                <div class="flex justify-between text-sm gap-2">
+                    <span class="text-gray-400 truncate">${escapeHtml(d.purpose)}</span>
+                    <span class="text-white shrink-0">₹${d.amount}</span>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
 async function loadExpenses() {
     try {
         const expenses = await apiCall('/expenses');
@@ -443,6 +528,8 @@ async function loadExpenses() {
                 <td class="py-3 px-4 text-center text-white">₹${e.rent}</td>
                 <td class="py-3 px-4 text-center text-white">₹${e.miscellaneous}</td>
                 <td class="py-3 px-4 text-center text-green-400">₹${e.totalExpense}</td>
+                <td class="py-3 px-4 text-center text-white">₹${e.amountFromAbroad || 0}</td>
+                <td class="py-3 px-4 text-center">${donationsSummaryHtml(e.donations)}</td>
                 <td class="py-3 px-4 text-center">
                     <button data-action="delete-expense" data-id="${e._id}" class="text-red-400 hover:text-red-300 transition btn-pop">Delete</button>
                 </td>
@@ -461,11 +548,13 @@ async function loadExpenses() {
                     <div class="flex justify-between"><span class="text-gray-500">Internet</span><span class="text-white">₹${e.internetBill}</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Rent</span><span class="text-white">₹${e.rent}</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Misc</span><span class="text-white">₹${e.miscellaneous}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Abroad</span><span class="text-white">₹${e.amountFromAbroad || 0}</span></div>
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/10">
                     <span class="text-orange-400 font-semibold text-sm">Total</span>
                     <span class="text-orange-400 font-bold">₹${e.totalExpense}</span>
                 </div>
+                ${donationsListHtml(e.donations)}
             </div>
         `).join('');
     } catch (error) {
@@ -871,11 +960,16 @@ async function loadMemberExpenses() {
                         <span class="text-gray-400 text-sm">Miscellaneous</span>
                         <span class="text-white font-semibold">₹${e.miscellaneous || 0}</span>
                     </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/10">
+                        <span class="text-gray-400 text-sm">Amount from Abroad</span>
+                        <span class="text-white font-semibold">₹${e.amountFromAbroad || 0}</span>
+                    </div>
                     <div class="flex justify-between items-center pt-3">
                         <span class="text-orange-400 font-bold">Net Bill</span>
                         <span class="text-2xl text-orange-400 font-bold">₹${e.totalExpense || 0}</span>
                     </div>
                 </div>
+                ${donationsListHtml(e.donations)}
             </div>
         `).join('');
     } catch (error) {
@@ -915,6 +1009,44 @@ document.getElementById('editMemberForm').addEventListener('submit', async (e) =
     await updateMember();
 });
 
+function createDonationRow() {
+    const row = document.createElement('div');
+    row.className = 'flex gap-2 items-center';
+    row.innerHTML = `
+        <input type="text" placeholder="Purpose (e.g. Independence Day event)" class="donation-purpose flex-1 px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:border-orange-500 focus:outline-none transition">
+        <input type="number" placeholder="Amount" min="0" class="donation-amount w-24 px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:border-orange-500 focus:outline-none transition">
+        <button type="button" class="remove-donation-row text-red-400 hover:text-red-300 p-2 shrink-0" title="Remove donation">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+    `;
+    row.querySelector('.remove-donation-row').addEventListener('click', () => row.remove());
+    return row;
+}
+
+document.getElementById('hasDonationsCheckbox').addEventListener('change', (e) => {
+    const container = document.getElementById('donationsContainer');
+    container.classList.toggle('hidden', !e.target.checked);
+    if (e.target.checked && document.getElementById('donationRows').children.length === 0) {
+        document.getElementById('donationRows').appendChild(createDonationRow());
+    }
+});
+
+document.getElementById('addDonationRowBtn').addEventListener('click', () => {
+    document.getElementById('donationRows').appendChild(createDonationRow());
+});
+
+function collectDonationRows() {
+    return [...document.querySelectorAll('#donationRows > div')].map(row => ({
+        purpose: row.querySelector('.donation-purpose').value.trim(),
+        amount: parseFloat(row.querySelector('.donation-amount').value) || 0
+    })).filter(d => d.purpose && d.amount > 0);
+}
+
+function resetDonationRows() {
+    document.getElementById('donationRows').innerHTML = '';
+    document.getElementById('donationsContainer').classList.add('hidden');
+}
+
 document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
@@ -927,11 +1059,14 @@ document.getElementById('addExpenseForm').addEventListener('submit', async (e) =
                 waterBill: parseFloat(document.getElementById('waterBill').value) || 0,
                 internetBill: parseFloat(document.getElementById('internetBill').value) || 0,
                 rent: parseFloat(document.getElementById('rentBill').value) || 0,
-                miscellaneous: parseFloat(document.getElementById('miscellaneousBill').value) || 0
+                miscellaneous: parseFloat(document.getElementById('miscellaneousBill').value) || 0,
+                amountFromAbroad: parseFloat(document.getElementById('expenseAbroad').value) || 0,
+                donations: collectDonationRows()
             })
         });
         closeModal('addExpenseModal');
         e.target.reset();
+        resetDonationRows();
         await loadExpenses();
         await loadDashboard();
         toast('Expense added!', 'success');
@@ -1002,7 +1137,6 @@ function populateYears() {
 // ==================== EVENT LISTENERS ====================
 document.getElementById('addMemberBtn').addEventListener('click', () => openModal('addMemberModal'));
 document.getElementById('addExpenseBtn').addEventListener('click', () => openModal('addExpenseModal'));
-document.getElementById('savePaymentsBtn').addEventListener('click', savePayments);
 document.getElementById('printPaymentsBtn').addEventListener('click', printPayments);
 document.getElementById('remindAllBtn').addEventListener('click', remindAllUnpaid);
 document.getElementById('paymentMonth').addEventListener('change', loadPayments);

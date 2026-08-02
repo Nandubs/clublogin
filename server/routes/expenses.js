@@ -9,6 +9,8 @@ router.get('/', requireAuth, (req, res) => {
     SELECT * FROM expenses ORDER BY year DESC, month DESC
   `).all();
 
+  const donationsByExpense = db.prepare('SELECT id, expense_id, purpose, amount FROM donations').all();
+
   res.json(expenses.map(e => ({
     _id: e.id,
     month: e.month,
@@ -18,7 +20,11 @@ router.get('/', requireAuth, (req, res) => {
     internetBill: e.internet_bill,
     rent: e.rent,
     miscellaneous: e.miscellaneous,
-    totalExpense: e.total_expense
+    totalExpense: e.total_expense,
+    amountFromAbroad: e.amount_from_abroad,
+    donations: donationsByExpense
+      .filter(d => d.expense_id === e.id)
+      .map(d => ({ id: d.id, purpose: d.purpose, amount: d.amount }))
   })));
 });
 
@@ -29,17 +35,32 @@ router.post('/', requireAuth, requireAdmin, (req, res) => {
   const internetBill = parseFloat(req.body.internetBill) || 0;
   const rent = parseFloat(req.body.rent) || 0;
   const miscellaneous = parseFloat(req.body.miscellaneous) || 0;
+  const amountFromAbroad = parseFloat(req.body.amountFromAbroad) || 0;
+  const donations = Array.isArray(req.body.donations)
+    ? req.body.donations
+        .map(d => ({ purpose: (d.purpose || '').trim(), amount: parseFloat(d.amount) || 0 }))
+        .filter(d => d.purpose && d.amount > 0)
+    : [];
 
   if (!month || !year) return res.status(400).json({ error: 'Month and year are required' });
 
   const totalExpense = electricityBill + waterBill + internetBill + rent + miscellaneous;
 
-  const result = db.prepare(`
-    INSERT INTO expenses (month, year, electricity_bill, water_bill, internet_bill, rent, miscellaneous, total_expense)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(month, year, electricityBill, waterBill, internetBill, rent, miscellaneous, totalExpense);
+  const insertExpense = db.prepare(`
+    INSERT INTO expenses (month, year, electricity_bill, water_bill, internet_bill, rent, miscellaneous, total_expense, amount_from_abroad)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const insertDonation = db.prepare('INSERT INTO donations (expense_id, purpose, amount) VALUES (?, ?, ?)');
 
-  res.status(201).json({ message: 'Expense added', id: result.lastInsertRowid });
+  const expenseId = db.transaction(() => {
+    const result = insertExpense.run(month, year, electricityBill, waterBill, internetBill, rent, miscellaneous, totalExpense, amountFromAbroad);
+    for (const d of donations) {
+      insertDonation.run(result.lastInsertRowid, d.purpose, d.amount);
+    }
+    return result.lastInsertRowid;
+  })();
+
+  res.status(201).json({ message: 'Expense added', id: expenseId });
 });
 
 router.delete('/:id', requireAuth, requireAdmin, (req, res) => {

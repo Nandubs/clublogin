@@ -141,6 +141,7 @@ db.ready = (async () => {
       amount INTEGER NOT NULL DEFAULT 100,
       status TEXT NOT NULL DEFAULT 'not_paid',
       paid_at TEXT,
+      reminded_at TEXT,
       UNIQUE(member_id, month, year)
     );
 
@@ -154,6 +155,15 @@ db.ready = (async () => {
       rent REAL NOT NULL DEFAULT 0,
       miscellaneous REAL NOT NULL DEFAULT 0,
       total_expense REAL NOT NULL DEFAULT 0,
+      amount_from_abroad REAL NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS donations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      expense_id INTEGER NOT NULL REFERENCES expenses(id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL,
+      amount REAL NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
   `);
@@ -174,6 +184,8 @@ db.ready = (async () => {
   ensureColumn('registrations', 'location', 'TEXT');
   ensureColumn('registrations', 'blood_group', 'TEXT');
   ensureColumn('expenses', 'rent', 'REAL NOT NULL DEFAULT 0');
+  ensureColumn('expenses', 'amount_from_abroad', 'REAL NOT NULL DEFAULT 0');
+  ensureColumn('payments', 'reminded_at', 'TEXT');
 
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
   if (memberCount === 0) {
