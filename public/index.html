@@ -373,7 +373,8 @@
                         <tbody id="membersTableIndia"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3 mb-6" id="membersCardsIndia"></div>
+                <div class="md:hidden space-y-3 mb-3" id="membersCardsIndia"></div>
+                <div class="mb-6" id="membersPaginationIndia"></div>
 
                 <h3 class="text-white font-semibold mb-3 flex items-center gap-2">Outside India <span id="membersOutsideCount" class="text-gray-500 text-sm font-normal">(0)</span></h3>
                 <div class="hidden md:block overflow-x-auto">
@@ -391,7 +392,8 @@
                         <tbody id="membersTableOutside"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3" id="membersCardsOutside"></div>
+                <div class="md:hidden space-y-3 mb-3" id="membersCardsOutside"></div>
+                <div id="membersPaginationOutside"></div>
             </div>
 
             <!-- Payments Section -->
@@ -474,7 +476,8 @@
                         <tbody id="expensesTable"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3" id="expensesCards"></div>
+                <div class="md:hidden space-y-3 mb-3" id="expensesCards"></div>
+                <div id="expensesPagination"></div>
             </div>
 
             <!-- Registrations Section -->
@@ -497,7 +500,8 @@
                         <tbody id="registrationsTableIndia"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3 mb-6" id="registrationsCardsIndia"></div>
+                <div class="md:hidden space-y-3 mb-3" id="registrationsCardsIndia"></div>
+                <div class="mb-6" id="registrationsPaginationIndia"></div>
 
                 <h3 class="text-white font-semibold mb-3 flex items-center gap-2">Outside India <span id="registrationsOutsideCount" class="text-gray-500 text-sm font-normal">(0)</span></h3>
                 <div class="hidden md:block overflow-x-auto">
@@ -515,7 +519,8 @@
                         <tbody id="registrationsTableOutside"></tbody>
                     </table>
                 </div>
-                <div class="md:hidden space-y-3" id="registrationsCardsOutside"></div>
+                <div class="md:hidden space-y-3 mb-3" id="registrationsCardsOutside"></div>
+                <div id="registrationsPaginationOutside"></div>
             </div>
         </div>
 
@@ -837,6 +842,75 @@
                 <div class="flex gap-3 pt-2">
                     <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Add</button>
                     <button type="button" onclick="closeModal('addExpenseModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Expense Modal -->
+    <div id="editExpenseModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Edit Expense</h3>
+            <form id="editExpenseForm" class="space-y-4">
+                <input type="hidden" id="editExpenseId">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-400 mb-2 text-sm">Month</label>
+                        <select id="editExpenseMonth" required class="w-full px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-2 text-sm">Year</label>
+                        <select id="editExpenseYear" required class="w-full px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white"></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Electricity Bill (₹)</label>
+                    <input type="number" id="editElectricityBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Water Bill (₹)</label>
+                    <input type="number" id="editWaterBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Internet Bill (₹)</label>
+                    <input type="number" id="editInternetBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Rent (₹)</label>
+                    <input type="number" id="editRentBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Miscellaneous (₹)</label>
+                    <input type="number" id="editMiscellaneousBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+
+                <hr class="border-white/10">
+
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Amount Received from Abroad (₹)</label>
+                    <input type="number" id="editExpenseAbroad" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+
+                <div>
+                    <label class="flex items-center gap-2.5 text-gray-300 text-sm cursor-pointer">
+                        <input type="checkbox" id="editHasDonationsCheckbox" class="accent-orange-500 w-4 h-4">
+                        Any other donations received?
+                    </label>
+                </div>
+
+                <div id="editDonationsContainer" class="hidden space-y-3">
+                    <div id="editDonationRows" class="space-y-3"></div>
+                    <button type="button" id="editAddDonationRowBtn" class="text-orange-400 hover:text-orange-300 text-sm font-medium transition">+ Add Another Donation</button>
+                </div>
+
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Save Changes</button>
+                    <button type="button" onclick="closeModal('editExpenseModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
                 </div>
             </form>
         </div>

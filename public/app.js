@@ -6,6 +6,7 @@ let currentEditingMember = null;
 let currentApprovingRegistration = null;
 let membersCache = [];
 let registrationsCache = [];
+let expensesCache = [];
 let roleChangeHandler = null;
 
 const monthNames = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -38,6 +39,42 @@ function isIndia(location) { return location === 'India'; }
 function locationBadge(location) {
     return `<span class="px-2 py-0.5 rounded-full text-xs bg-white/10 text-gray-300">${escapeHtml(location || 'Unspecified')}</span>`;
 }
+
+// ==================== PAGINATION ====================
+const PAGE_SIZE = 10;
+const paginationState = {};
+
+function paginateArray(array, groupKey) {
+    const total = Math.max(1, Math.ceil(array.length / PAGE_SIZE));
+    let page = Math.min(paginationState[groupKey] || 1, total);
+    if (page < 1) page = 1;
+    paginationState[groupKey] = page;
+
+    const start = (page - 1) * PAGE_SIZE;
+    return { pageItems: array.slice(start, start + PAGE_SIZE), page, total };
+}
+
+function paginationControlsHtml(groupKey, page, total) {
+    if (total <= 1) return '';
+    return `
+        <div class="flex items-center justify-center gap-3 pt-3">
+            <button data-page-group="${groupKey}" data-page-dir="-1" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition btn-pop disabled:opacity-30 disabled:pointer-events-none" ${page <= 1 ? 'disabled' : ''}>&larr; Prev</button>
+            <span class="text-gray-400 text-sm">Page ${page} of ${total}</span>
+            <button data-page-group="${groupKey}" data-page-dir="1" class="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-sm transition btn-pop disabled:opacity-30 disabled:pointer-events-none" ${page >= total ? 'disabled' : ''}>Next &rarr;</button>
+        </div>
+    `;
+}
+
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-page-group]');
+    if (!btn) return;
+    const groupKey = btn.dataset.pageGroup;
+    paginationState[groupKey] = (paginationState[groupKey] || 1) + parseInt(btn.dataset.pageDir, 10);
+
+    if (groupKey === 'membersIndia' || groupKey === 'membersOutside') renderMembersTab();
+    else if (groupKey === 'registrationsIndia' || groupKey === 'registrationsOutside') renderRegistrationsTab();
+    else if (groupKey === 'expenses') renderExpensesTab();
+});
 
 function toast(message, type = 'info') {
     const colors = {
@@ -201,8 +238,10 @@ function bloodGroupBadge(bloodGroup) {
         : `<span class="text-gray-600 text-xs">&mdash;</span>`;
 }
 
-function renderMembersGroup(members, tableId, cardsId, showLocationColumn) {
-    document.getElementById(tableId).innerHTML = members.map(m => `
+function renderMembersGroup(members, tableId, cardsId, paginationId, groupKey, showLocationColumn) {
+    const { pageItems, page, total } = paginateArray(members, groupKey);
+
+    document.getElementById(tableId).innerHTML = pageItems.map(m => `
         <tr class="border-b border-white/5 animate-fade-in">
             <td class="py-3 px-4 text-white">${escapeHtml(m.memberId)}</td>
             <td class="py-3 px-4 text-white">${escapeHtml(m.memberName)}</td>
@@ -213,7 +252,7 @@ function renderMembersGroup(members, tableId, cardsId, showLocationColumn) {
         </tr>
     `).join('');
 
-    document.getElementById(cardsId).innerHTML = members.map(m => `
+    document.getElementById(cardsId).innerHTML = pageItems.map(m => `
         <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
             <div class="flex items-start justify-between gap-3 mb-3">
                 <div class="min-w-0">
@@ -229,19 +268,25 @@ function renderMembersGroup(members, tableId, cardsId, showLocationColumn) {
             <div class="flex gap-2">${memberActionsHtml(m)}</div>
         </div>
     `).join('');
+
+    document.getElementById(paginationId).innerHTML = paginationControlsHtml(groupKey, page, total);
+}
+
+function renderMembersTab() {
+    const indiaMembers = membersCache.filter(m => isIndia(m.location));
+    const outsideMembers = membersCache.filter(m => !isIndia(m.location));
+
+    document.getElementById('membersIndiaCount').textContent = `(${indiaMembers.length})`;
+    document.getElementById('membersOutsideCount').textContent = `(${outsideMembers.length})`;
+
+    renderMembersGroup(indiaMembers, 'membersTableIndia', 'membersCardsIndia', 'membersPaginationIndia', 'membersIndia', false);
+    renderMembersGroup(outsideMembers, 'membersTableOutside', 'membersCardsOutside', 'membersPaginationOutside', 'membersOutside', true);
 }
 
 async function loadMembers() {
     try {
         membersCache = await apiCall('/members');
-        const indiaMembers = membersCache.filter(m => isIndia(m.location));
-        const outsideMembers = membersCache.filter(m => !isIndia(m.location));
-
-        document.getElementById('membersIndiaCount').textContent = `(${indiaMembers.length})`;
-        document.getElementById('membersOutsideCount').textContent = `(${outsideMembers.length})`;
-
-        renderMembersGroup(indiaMembers, 'membersTableIndia', 'membersCardsIndia', false);
-        renderMembersGroup(outsideMembers, 'membersTableOutside', 'membersCardsOutside', true);
+        renderMembersTab();
     } catch (error) {
         console.error('Load members error:', error);
     }
@@ -515,56 +560,70 @@ function donationsListHtml(donations) {
     `;
 }
 
+function expenseActionsHtml(e) {
+    return `
+        <button data-action="edit-expense" data-id="${e._id}" class="text-blue-400 hover:text-blue-300 px-2.5 py-1 bg-blue-500/10 rounded-lg transition btn-pop text-sm font-medium">Edit</button>
+        <button data-action="delete-expense" data-id="${e._id}" class="text-red-400 hover:text-red-300 px-2.5 py-1 bg-red-500/10 rounded-lg transition btn-pop text-sm font-medium">Delete</button>
+    `;
+}
+
+function renderExpensesTab() {
+    const { pageItems, page, total } = paginateArray(expensesCache, 'expenses');
+
+    document.getElementById('expensesTable').innerHTML = pageItems.map(e => `
+        <tr class="border-b border-white/5 animate-fade-in">
+            <td class="py-3 px-4 text-white">${monthNames[e.month]} ${e.year}</td>
+            <td class="py-3 px-4 text-center text-white">₹${e.electricityBill}</td>
+            <td class="py-3 px-4 text-center text-white">₹${e.waterBill}</td>
+            <td class="py-3 px-4 text-center text-white">₹${e.internetBill}</td>
+            <td class="py-3 px-4 text-center text-white">₹${e.rent}</td>
+            <td class="py-3 px-4 text-center text-white">₹${e.miscellaneous}</td>
+            <td class="py-3 px-4 text-center text-green-400">₹${e.totalExpense}</td>
+            <td class="py-3 px-4 text-center text-white">₹${e.amountFromAbroad || 0}</td>
+            <td class="py-3 px-4 text-center">${donationsSummaryHtml(e.donations)}</td>
+            <td class="py-3 px-4 text-center space-x-2">${expenseActionsHtml(e)}</td>
+        </tr>
+    `).join('');
+
+    document.getElementById('expensesCards').innerHTML = pageItems.map(e => `
+        <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
+            <div class="flex items-center justify-between mb-3">
+                <p class="text-white font-semibold">${monthNames[e.month]} ${e.year}</p>
+                <div class="flex gap-2">${expenseActionsHtml(e)}</div>
+            </div>
+            <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
+                <div class="flex justify-between"><span class="text-gray-500">Electricity</span><span class="text-white">₹${e.electricityBill}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Water</span><span class="text-white">₹${e.waterBill}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Internet</span><span class="text-white">₹${e.internetBill}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Rent</span><span class="text-white">₹${e.rent}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Misc</span><span class="text-white">₹${e.miscellaneous}</span></div>
+                <div class="flex justify-between"><span class="text-gray-500">Abroad</span><span class="text-white">₹${e.amountFromAbroad || 0}</span></div>
+            </div>
+            <div class="flex justify-between items-center pt-2 border-t border-white/10">
+                <span class="text-orange-400 font-semibold text-sm">Total</span>
+                <span class="text-orange-400 font-bold">₹${e.totalExpense}</span>
+            </div>
+            ${donationsListHtml(e.donations)}
+        </div>
+    `).join('');
+
+    document.getElementById('expensesPagination').innerHTML = paginationControlsHtml('expenses', page, total);
+}
+
 async function loadExpenses() {
     try {
-        const expenses = await apiCall('/expenses');
-
-        document.getElementById('expensesTable').innerHTML = expenses.map(e => `
-            <tr class="border-b border-white/5 animate-fade-in">
-                <td class="py-3 px-4 text-white">${monthNames[e.month]} ${e.year}</td>
-                <td class="py-3 px-4 text-center text-white">₹${e.electricityBill}</td>
-                <td class="py-3 px-4 text-center text-white">₹${e.waterBill}</td>
-                <td class="py-3 px-4 text-center text-white">₹${e.internetBill}</td>
-                <td class="py-3 px-4 text-center text-white">₹${e.rent}</td>
-                <td class="py-3 px-4 text-center text-white">₹${e.miscellaneous}</td>
-                <td class="py-3 px-4 text-center text-green-400">₹${e.totalExpense}</td>
-                <td class="py-3 px-4 text-center text-white">₹${e.amountFromAbroad || 0}</td>
-                <td class="py-3 px-4 text-center">${donationsSummaryHtml(e.donations)}</td>
-                <td class="py-3 px-4 text-center">
-                    <button data-action="delete-expense" data-id="${e._id}" class="text-red-400 hover:text-red-300 transition btn-pop">Delete</button>
-                </td>
-            </tr>
-        `).join('');
-
-        document.getElementById('expensesCards').innerHTML = expenses.map(e => `
-            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
-                <div class="flex items-center justify-between mb-3">
-                    <p class="text-white font-semibold">${monthNames[e.month]} ${e.year}</p>
-                    <button data-action="delete-expense" data-id="${e._id}" class="text-red-400 hover:text-red-300 transition btn-pop text-sm font-medium">Delete</button>
-                </div>
-                <div class="grid grid-cols-2 gap-x-4 gap-y-1.5 text-sm mb-3">
-                    <div class="flex justify-between"><span class="text-gray-500">Electricity</span><span class="text-white">₹${e.electricityBill}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Water</span><span class="text-white">₹${e.waterBill}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Internet</span><span class="text-white">₹${e.internetBill}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Rent</span><span class="text-white">₹${e.rent}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Misc</span><span class="text-white">₹${e.miscellaneous}</span></div>
-                    <div class="flex justify-between"><span class="text-gray-500">Abroad</span><span class="text-white">₹${e.amountFromAbroad || 0}</span></div>
-                </div>
-                <div class="flex justify-between items-center pt-2 border-t border-white/10">
-                    <span class="text-orange-400 font-semibold text-sm">Total</span>
-                    <span class="text-orange-400 font-bold">₹${e.totalExpense}</span>
-                </div>
-                ${donationsListHtml(e.donations)}
-            </div>
-        `).join('');
+        expensesCache = await apiCall('/expenses');
+        renderExpensesTab();
     } catch (error) {
         console.error('Load expenses error:', error);
     }
 }
 
 function handleExpenseAction(e) {
-    const btn = e.target.closest('button[data-action="delete-expense"]');
-    if (btn) deleteExpense(btn.dataset.id);
+    const btn = e.target.closest('button[data-action]');
+    if (!btn) return;
+    if (btn.dataset.action === 'edit-expense') openEditExpenseModal(btn.dataset.id);
+    if (btn.dataset.action === 'delete-expense') deleteExpense(btn.dataset.id);
 }
 document.getElementById('expensesTable').addEventListener('click', handleExpenseAction);
 document.getElementById('expensesCards').addEventListener('click', handleExpenseAction);
@@ -576,8 +635,10 @@ function registrationActionsHtml(r) {
     `;
 }
 
-function renderRegistrationsGroup(regs, tableId, cardsId, showLocationColumn) {
-    document.getElementById(tableId).innerHTML = regs.map(r => `
+function renderRegistrationsGroup(regs, tableId, cardsId, paginationId, groupKey, showLocationColumn) {
+    const { pageItems, page, total } = paginateArray(regs, groupKey);
+
+    document.getElementById(tableId).innerHTML = pageItems.map(r => `
         <tr class="border-b border-white/5 animate-fade-in">
             <td class="py-3 px-4 text-white">${escapeHtml(r.name)}</td>
             <td class="py-3 px-4 text-white">${escapeHtml(r.mobile)}</td>
@@ -588,7 +649,7 @@ function renderRegistrationsGroup(regs, tableId, cardsId, showLocationColumn) {
         </tr>
     `).join('');
 
-    document.getElementById(cardsId).innerHTML = regs.map(r => `
+    document.getElementById(cardsId).innerHTML = pageItems.map(r => `
         <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in">
             <div class="flex items-start justify-between gap-3 mb-1">
                 <p class="text-white font-semibold">${escapeHtml(r.name)}</p>
@@ -599,29 +660,35 @@ function renderRegistrationsGroup(regs, tableId, cardsId, showLocationColumn) {
             <div class="flex gap-2">${registrationActionsHtml(r)}</div>
         </div>
     `).join('');
+
+    document.getElementById(paginationId).innerHTML = paginationControlsHtml(groupKey, page, total);
+}
+
+function renderRegistrationsTab() {
+    const empty = document.getElementById('noRegistrations');
+    const indiaRegs = registrationsCache.filter(r => isIndia(r.location));
+    const outsideRegs = registrationsCache.filter(r => !isIndia(r.location));
+
+    document.getElementById('registrationsIndiaCount').textContent = `(${indiaRegs.length})`;
+    document.getElementById('registrationsOutsideCount').textContent = `(${outsideRegs.length})`;
+
+    renderRegistrationsGroup(indiaRegs, 'registrationsTableIndia', 'registrationsCardsIndia', 'registrationsPaginationIndia', 'registrationsIndia', false);
+    renderRegistrationsGroup(outsideRegs, 'registrationsTableOutside', 'registrationsCardsOutside', 'registrationsPaginationOutside', 'registrationsOutside', true);
+
+    const count = registrationsCache.length;
+    empty.classList.toggle('hidden', count > 0);
+
+    const badge = document.getElementById('pendingBadge');
+    badge.textContent = count;
+    badge.classList.toggle('hidden', count === 0);
+
+    document.getElementById('pendingDot').classList.toggle('hidden', count === 0);
 }
 
 async function loadRegistrations() {
     try {
         registrationsCache = await apiCall('/registrations');
-        const empty = document.getElementById('noRegistrations');
-        const indiaRegs = registrationsCache.filter(r => isIndia(r.location));
-        const outsideRegs = registrationsCache.filter(r => !isIndia(r.location));
-
-        document.getElementById('registrationsIndiaCount').textContent = `(${indiaRegs.length})`;
-        document.getElementById('registrationsOutsideCount').textContent = `(${outsideRegs.length})`;
-
-        renderRegistrationsGroup(indiaRegs, 'registrationsTableIndia', 'registrationsCardsIndia', false);
-        renderRegistrationsGroup(outsideRegs, 'registrationsTableOutside', 'registrationsCardsOutside', true);
-
-        const count = registrationsCache.length;
-        empty.classList.toggle('hidden', count > 0);
-
-        const badge = document.getElementById('pendingBadge');
-        badge.textContent = count;
-        badge.classList.toggle('hidden', count === 0);
-
-        document.getElementById('pendingDot').classList.toggle('hidden', count === 0);
+        renderRegistrationsTab();
     } catch (error) {
         console.error('Load registrations error:', error);
     }
@@ -1009,12 +1076,12 @@ document.getElementById('editMemberForm').addEventListener('submit', async (e) =
     await updateMember();
 });
 
-function createDonationRow() {
+function createDonationRow(prefill) {
     const row = document.createElement('div');
     row.className = 'flex gap-2 items-center';
     row.innerHTML = `
-        <input type="text" placeholder="Purpose (e.g. Independence Day event)" class="donation-purpose flex-1 px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:border-orange-500 focus:outline-none transition">
-        <input type="number" placeholder="Amount" min="0" class="donation-amount w-24 px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:border-orange-500 focus:outline-none transition">
+        <input type="text" placeholder="Purpose (e.g. Independence Day event)" class="donation-purpose flex-1 px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:border-orange-500 focus:outline-none transition" value="${prefill ? escapeHtml(prefill.purpose) : ''}">
+        <input type="number" placeholder="Amount" min="0" class="donation-amount w-24 px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm focus:border-orange-500 focus:outline-none transition" value="${prefill ? prefill.amount : ''}">
         <button type="button" class="remove-donation-row text-red-400 hover:text-red-300 p-2 shrink-0" title="Remove donation">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M6 18L18 6M6 6l12 12"></path></svg>
         </button>
@@ -1023,28 +1090,41 @@ function createDonationRow() {
     return row;
 }
 
-document.getElementById('hasDonationsCheckbox').addEventListener('change', (e) => {
-    const container = document.getElementById('donationsContainer');
-    container.classList.toggle('hidden', !e.target.checked);
-    if (e.target.checked && document.getElementById('donationRows').children.length === 0) {
-        document.getElementById('donationRows').appendChild(createDonationRow());
-    }
-});
+function setupDonationsUI(checkboxId, containerId, rowsId, addBtnId) {
+    document.getElementById(checkboxId).addEventListener('change', (e) => {
+        const container = document.getElementById(containerId);
+        container.classList.toggle('hidden', !e.target.checked);
+        if (e.target.checked && document.getElementById(rowsId).children.length === 0) {
+            document.getElementById(rowsId).appendChild(createDonationRow());
+        }
+    });
 
-document.getElementById('addDonationRowBtn').addEventListener('click', () => {
-    document.getElementById('donationRows').appendChild(createDonationRow());
-});
+    document.getElementById(addBtnId).addEventListener('click', () => {
+        document.getElementById(rowsId).appendChild(createDonationRow());
+    });
+}
+setupDonationsUI('hasDonationsCheckbox', 'donationsContainer', 'donationRows', 'addDonationRowBtn');
+setupDonationsUI('editHasDonationsCheckbox', 'editDonationsContainer', 'editDonationRows', 'editAddDonationRowBtn');
 
-function collectDonationRows() {
-    return [...document.querySelectorAll('#donationRows > div')].map(row => ({
+function collectDonationRows(rowsId) {
+    return [...document.querySelectorAll(`#${rowsId} > div`)].map(row => ({
         purpose: row.querySelector('.donation-purpose').value.trim(),
         amount: parseFloat(row.querySelector('.donation-amount').value) || 0
     })).filter(d => d.purpose && d.amount > 0);
 }
 
-function resetDonationRows() {
-    document.getElementById('donationRows').innerHTML = '';
-    document.getElementById('donationsContainer').classList.add('hidden');
+function resetDonationRows(containerId, rowsId) {
+    document.getElementById(rowsId).innerHTML = '';
+    document.getElementById(containerId).classList.add('hidden');
+}
+
+function populateDonationRows(rowsId, checkboxId, containerId, donations) {
+    const rowsContainer = document.getElementById(rowsId);
+    rowsContainer.innerHTML = '';
+    const hasDonations = donations && donations.length > 0;
+    document.getElementById(checkboxId).checked = hasDonations;
+    document.getElementById(containerId).classList.toggle('hidden', !hasDonations);
+    if (hasDonations) donations.forEach(d => rowsContainer.appendChild(createDonationRow(d)));
 }
 
 document.getElementById('addExpenseForm').addEventListener('submit', async (e) => {
@@ -1061,15 +1141,61 @@ document.getElementById('addExpenseForm').addEventListener('submit', async (e) =
                 rent: parseFloat(document.getElementById('rentBill').value) || 0,
                 miscellaneous: parseFloat(document.getElementById('miscellaneousBill').value) || 0,
                 amountFromAbroad: parseFloat(document.getElementById('expenseAbroad').value) || 0,
-                donations: collectDonationRows()
+                donations: collectDonationRows('donationRows')
             })
         });
         closeModal('addExpenseModal');
         e.target.reset();
-        resetDonationRows();
+        resetDonationRows('donationsContainer', 'donationRows');
         await loadExpenses();
         await loadDashboard();
         toast('Expense added!', 'success');
+    } catch (error) {
+        toast(error.message, 'error');
+    }
+});
+
+function openEditExpenseModal(expenseId) {
+    const expense = expensesCache.find(e => String(e._id) === String(expenseId));
+    if (!expense) return;
+
+    document.getElementById('editExpenseId').value = expense._id;
+    document.getElementById('editExpenseMonth').value = expense.month;
+    document.getElementById('editExpenseYear').value = expense.year;
+    document.getElementById('editElectricityBill').value = expense.electricityBill;
+    document.getElementById('editWaterBill').value = expense.waterBill;
+    document.getElementById('editInternetBill').value = expense.internetBill;
+    document.getElementById('editRentBill').value = expense.rent;
+    document.getElementById('editMiscellaneousBill').value = expense.miscellaneous;
+    document.getElementById('editExpenseAbroad').value = expense.amountFromAbroad || 0;
+
+    populateDonationRows('editDonationRows', 'editHasDonationsCheckbox', 'editDonationsContainer', expense.donations);
+
+    openModal('editExpenseModal');
+}
+
+document.getElementById('editExpenseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const expenseId = document.getElementById('editExpenseId').value;
+    try {
+        await apiCall(`/expenses/${expenseId}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                month: parseInt(document.getElementById('editExpenseMonth').value),
+                year: parseInt(document.getElementById('editExpenseYear').value),
+                electricityBill: parseFloat(document.getElementById('editElectricityBill').value) || 0,
+                waterBill: parseFloat(document.getElementById('editWaterBill').value) || 0,
+                internetBill: parseFloat(document.getElementById('editInternetBill').value) || 0,
+                rent: parseFloat(document.getElementById('editRentBill').value) || 0,
+                miscellaneous: parseFloat(document.getElementById('editMiscellaneousBill').value) || 0,
+                amountFromAbroad: parseFloat(document.getElementById('editExpenseAbroad').value) || 0,
+                donations: collectDonationRows('editDonationRows')
+            })
+        });
+        closeModal('editExpenseModal');
+        await loadExpenses();
+        await loadDashboard();
+        toast('Expense updated!', 'success');
     } catch (error) {
         toast(error.message, 'error');
     }
@@ -1122,7 +1248,7 @@ function setupTabs() {
 
 function populateYears() {
     const year = new Date().getFullYear();
-    ['paymentYear', 'expenseYear', 'calendarYear'].forEach(id => {
+    ['paymentYear', 'expenseYear', 'editExpenseYear', 'calendarYear'].forEach(id => {
         const select = document.getElementById(id);
         if (select) {
             select.innerHTML = '';
