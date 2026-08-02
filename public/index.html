@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#160f0b">
+    <title>Brahmastra Club Management</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --accent-from: #ff7a1a;
+            --accent-to: #ffb13c;
+        }
+        * { -webkit-tap-highlight-color: transparent; }
+        html { touch-action: manipulation; }
+        body {
+            background:
+                radial-gradient(circle at 12% -10%, rgba(255, 122, 26, 0.20), transparent 42%),
+                radial-gradient(circle at 100% 0%, rgba(255, 177, 60, 0.12), transparent 38%),
+                linear-gradient(160deg, #15100d 0%, #1c1310 45%, #24160f 100%);
+            background-attachment: fixed;
+            min-height: 100vh;
+            font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+            overflow-x: hidden;
+        }
+        input, select, textarea { font-size: 16px; }
+        .gradient-bg { background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%); }
+        .gradient-text {
+            background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%);
+            -webkit-background-clip: text; background-clip: text; color: transparent;
+        }
+        .glass {
+            background: rgba(20, 14, 11, 0.72);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 122, 26, 0.16);
+        }
+        /* Full-screen pages and modals combine a permanent `flex` layout
+           class with a JS-toggled `hidden` class on the same element; Tailwind's
+           plain `.hidden` alone can lose that cascade fight, so force it here.
+           Scoped to `.overlay-flex` only so it doesn't clobber the responsive
+           `hidden md:flex` / `hidden md:block` utilities used elsewhere. */
+        .overlay-flex.hidden { display: none !important; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
+        @keyframes slideInRight { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+        @keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 0 0 rgba(255, 122, 26, 0.35); } 50% { box-shadow: 0 0 0 6px rgba(255, 122, 26, 0); } }
+
+        .animate-fade-in-up { animation: fadeInUp 0.5s ease both; }
+        .animate-fade-in { animation: fadeIn 0.4s ease both; }
+        .animate-scale-in { animation: scaleIn 0.25s ease both; }
+        .animate-slide-in { animation: slideInRight 0.35s ease both; }
+        .stagger-1 { animation-delay: .05s; } .stagger-2 { animation-delay: .1s; }
+        .stagger-3 { animation-delay: .15s; } .stagger-4 { animation-delay: .2s; }
+
+        .card-hover { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.4); border-color: rgba(255,122,26,0.35); }
+
+        .btn-pop { transition: transform .15s ease, opacity .15s ease, box-shadow .15s ease; }
+        .btn-pop:hover { transform: scale(1.03); }
+        .btn-pop:active { transform: scale(0.97); }
+
+        .tab-content { animation: fadeIn 0.35s ease both; }
+        .pulse-badge { animation: pulseGlow 2s infinite; }
+
+        .icon-badge {
+            width: 2.75rem; height: 2.75rem; border-radius: 0.9rem;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 6px 18px rgba(255, 122, 26, 0.28);
+        }
+
+        /* Top tabs (desktop / tablet) */
+        .top-tabs .tab-btn { color: #9ca3af; }
+        .top-tabs .tab-btn.tab-active { background: linear-gradient(135deg, var(--accent-from) 0%, var(--accent-to) 100%); color: #fff; }
+
+        /* Bottom nav (mobile) */
+        .bottom-nav {
+            position: fixed; left: 0; right: 0; bottom: 0; z-index: 40;
+            background: rgba(15, 10, 8, 0.92);
+            backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid rgba(255, 122, 26, 0.18);
+        }
+        .bottom-nav .tab-btn { color: #8b8b8b; }
+        .bottom-nav .tab-btn.tab-active { color: var(--accent-to); }
+        .bottom-nav .tab-btn.tab-active svg { filter: drop-shadow(0 0 6px rgba(255, 140, 0, .55)); }
+
+        .nav-dot {
+            position: absolute; top: 2px; right: 2px;
+            width: 9px; height: 9px; border-radius: 999px;
+            background: linear-gradient(135deg, var(--accent-from), var(--accent-to));
+            box-shadow: 0 0 0 2px rgba(15,10,8,0.92);
+        }
+
+        table { border-collapse: collapse; }
+        ::-webkit-scrollbar { height: 6px; width: 6px; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,122,26,0.35); border-radius: 999px; }
+    </style>
+</head>
+<body class="text-gray-100">
+
+    <!-- LOGIN PAGE -->
+    <div id="loginPage" class="overlay-flex min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md animate-fade-in-up">
+            <div class="text-center mb-8">
+                <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-bg mb-4 pulse-badge shadow-lg shadow-orange-500/20">
+                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-1 tracking-tight">Brahmastra Arts & Sports Club</h1>
+                <p class="gradient-text font-semibold text-sm tracking-wide uppercase">Vakkom &middot; Member Portal</p>
+            </div>
+
+            <div class="glass rounded-3xl p-6 sm:p-8 shadow-2xl">
+                <h2 class="text-xl sm:text-2xl font-bold text-white mb-6 text-center">Welcome Back</h2>
+
+                <form id="loginForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">User ID</label>
+                        <input type="text" id="userId" required autocomplete="username" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Password</label>
+                        <input type="password" id="password" required autocomplete="current-password" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                    </div>
+                    <div id="loginError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-xl text-sm animate-fade-in"></div>
+                    <button type="submit" class="w-full gradient-bg text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition btn-pop shadow-lg shadow-orange-500/20">Login</button>
+                </form>
+
+                <div class="mt-6 text-center">
+                    <button id="showRegisterBtn" class="text-orange-400 hover:text-orange-300 text-sm font-medium transition">New member? Register here</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REGISTER PAGE -->
+    <div id="registerPage" class="overlay-flex hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md animate-fade-in-up">
+            <div class="text-center mb-8">
+                <h1 class="text-xl sm:text-2xl font-extrabold text-white mb-1 tracking-tight">Join Brahmastra Arts & Sports Club</h1>
+                <p class="gradient-text font-semibold text-sm tracking-wide uppercase">Submit your details for admin approval</p>
+            </div>
+
+            <div class="glass rounded-3xl p-6 sm:p-8 shadow-2xl">
+                <form id="registerForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Full Name</label>
+                        <input type="text" id="regName" required class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Mobile Number</label>
+                        <input type="tel" id="regMobile" required class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Address</label>
+                        <textarea id="regAddress" rows="3" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition"></textarea>
+                    </div>
+                    <div id="registerError" class="hidden bg-red-900/50 border border-red-500 text-red-200 px-4 py-3 rounded-xl text-sm animate-fade-in"></div>
+                    <button type="submit" class="w-full gradient-bg text-white font-semibold py-3.5 rounded-xl hover:opacity-90 transition btn-pop shadow-lg shadow-orange-500/20">Submit Registration</button>
+                </form>
+                <div class="mt-6 text-center">
+                    <button id="backToLoginBtn" class="text-gray-400 hover:text-gray-300 text-sm font-medium transition">Back to Login</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- REGISTRATION PENDING -->
+    <div id="registerPendingPage" class="overlay-flex hidden min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md text-center animate-scale-in">
+            <div class="glass rounded-3xl p-8 sm:p-10 shadow-2xl">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-bg mb-4 shadow-lg shadow-orange-500/20">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h2 class="text-2xl font-bold text-white mb-2">Registration Submitted</h2>
+                <p class="text-gray-400 mb-6">An admin will review your request. You'll be able to log in once approved and given your Member ID and password.</p>
+                <button id="pendingBackToLoginBtn" class="gradient-bg text-white font-semibold py-3 px-6 rounded-xl hover:opacity-90 transition btn-pop">Back to Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN DASHBOARD -->
+    <div id="adminDashboard" class="hidden min-h-screen">
+        <div class="max-w-7xl mx-auto p-4 sm:p-6 pb-24 md:pb-6">
+            <!-- Header -->
+            <header class="glass rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex justify-between items-center animate-fade-in-up sticky top-3 z-30 shadow-xl">
+                <div class="min-w-0">
+                    <h1 class="text-lg sm:text-2xl font-bold text-white truncate">Admin Dashboard</h1>
+                    <p class="text-gray-400 text-xs sm:text-sm truncate">Welcome, <span id="adminName"></span></p>
+                </div>
+                <button id="logoutBtn" class="bg-red-600/90 hover:bg-red-600 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium shrink-0">Logout</button>
+            </header>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up stagger-1">
+                    <div class="icon-badge gradient-bg mb-3">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                    <p class="text-gray-400 text-xs sm:text-sm">Total Members</p>
+                    <h3 class="text-2xl sm:text-3xl font-bold text-white mt-1" id="totalMembers">0</h3>
+                </div>
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up stagger-2">
+                    <div class="icon-badge gradient-bg mb-3">
+                        <span class="text-white font-bold text-lg">₹</span>
+                    </div>
+                    <p class="text-gray-400 text-xs sm:text-sm">Monthly Collection</p>
+                    <h3 class="text-2xl sm:text-3xl font-bold text-green-400 mt-1">₹<span id="monthlyCollection">0</span></h3>
+                </div>
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up stagger-3">
+                    <div class="icon-badge gradient-bg mb-3">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <p class="text-gray-400 text-xs sm:text-sm">Monthly Expenses</p>
+                    <h3 class="text-2xl sm:text-3xl font-bold text-red-400 mt-1">₹<span id="monthlyExpenses">0</span></h3>
+                </div>
+                <div class="glass rounded-2xl p-4 sm:p-5 card-hover animate-fade-in-up stagger-4">
+                    <div class="icon-badge gradient-bg mb-3">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 17l6-6 4 4 8-8M21 7v6h-6"></path></svg>
+                    </div>
+                    <p class="text-gray-400 text-xs sm:text-sm">Net Balance</p>
+                    <h3 class="text-2xl sm:text-3xl font-bold text-orange-400 mt-1">₹<span id="netBalance">0</span></h3>
+                </div>
+            </div>
+
+            <!-- Desktop / tablet tabs -->
+            <div class="top-tabs hidden md:flex glass rounded-2xl p-2 mb-6 gap-2 overflow-x-auto animate-fade-in-up">
+                <button class="tab-btn tab-active px-4 py-2 rounded-xl transition btn-pop font-medium" data-tab="members">Members</button>
+                <button class="tab-btn px-4 py-2 rounded-xl transition btn-pop font-medium" data-tab="payments">Payments</button>
+                <button class="tab-btn px-4 py-2 rounded-xl transition btn-pop font-medium" data-tab="expenses">Expenses</button>
+                <button class="tab-btn px-4 py-2 rounded-xl transition btn-pop font-medium flex items-center gap-2" data-tab="registrations">
+                    Registrations
+                    <span id="pendingBadge" class="hidden bg-orange-500 text-white text-xs font-bold rounded-full px-2 py-0.5 pulse-badge">0</span>
+                </button>
+            </div>
+
+            <!-- Members Section -->
+            <div id="membersTab" class="tab-content glass rounded-2xl p-4 sm:p-6">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-lg sm:text-xl font-bold text-white">Members</h2>
+                    <button id="addMemberBtn" class="gradient-bg px-4 sm:px-6 py-2 rounded-xl text-white transition btn-pop text-sm sm:text-base font-medium shadow-lg shadow-orange-500/20">+ Add Member</button>
+                </div>
+
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">ID</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="membersTable"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="membersCards"></div>
+            </div>
+
+            <!-- Payments Section -->
+            <div id="paymentsTab" class="tab-content glass rounded-2xl p-4 sm:p-6 hidden">
+                <h2 class="text-lg sm:text-xl font-bold text-white mb-5">Mark Monthly Payments</h2>
+
+                <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-5">
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">Month</label>
+                        <select id="paymentMonth" class="w-full px-3 sm:px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 text-sm mb-2">Year</label>
+                        <select id="paymentYear" class="w-full px-3 sm:px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white"></select>
+                    </div>
+                </div>
+
+                <button id="savePaymentsBtn" class="gradient-bg px-6 py-2.5 rounded-xl text-white mb-5 transition btn-pop font-medium shadow-lg shadow-orange-500/20 w-full sm:w-auto">Save Changes</button>
+
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Member</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Amount</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="paymentsTable"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="paymentsCards"></div>
+            </div>
+
+            <!-- Expenses Section -->
+            <div id="expensesTab" class="tab-content glass rounded-2xl p-4 sm:p-6 hidden">
+                <div class="flex justify-between items-center mb-5">
+                    <h2 class="text-lg sm:text-xl font-bold text-white">Monthly Expenses</h2>
+                    <button id="addExpenseBtn" class="gradient-bg px-4 sm:px-6 py-2 rounded-xl text-white transition btn-pop text-sm sm:text-base font-medium shadow-lg shadow-orange-500/20">+ Add Expense</button>
+                </div>
+
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Month/Year</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Electricity</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Water</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Internet</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Misc</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Total</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expensesTable"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="expensesCards"></div>
+            </div>
+
+            <!-- Registrations Section -->
+            <div id="registrationsTab" class="tab-content glass rounded-2xl p-4 sm:p-6 hidden">
+                <h2 class="text-lg sm:text-xl font-bold text-white mb-5">Pending Registrations</h2>
+
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Address</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="registrationsTable"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="registrationsCards"></div>
+                <p id="noRegistrations" class="hidden text-gray-400 text-center py-8">No pending registrations</p>
+            </div>
+        </div>
+
+        <!-- Mobile bottom nav -->
+        <nav class="bottom-nav md:hidden pb-safe">
+            <div class="grid grid-cols-4">
+                <button class="tab-btn tab-active flex flex-col items-center gap-1 py-3 relative" data-tab="members">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <span class="text-[11px] font-medium">Members</span>
+                </button>
+                <button class="tab-btn flex flex-col items-center gap-1 py-3 relative" data-tab="payments">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2 8a2 2 0 012-2h16a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V8zM2 10h20"></path></svg>
+                    <span class="text-[11px] font-medium">Payments</span>
+                </button>
+                <button class="tab-btn flex flex-col items-center gap-1 py-3 relative" data-tab="expenses">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                    <span class="text-[11px] font-medium">Expenses</span>
+                </button>
+                <button class="tab-btn flex flex-col items-center gap-1 py-3 relative" data-tab="registrations">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M13 7a4 4 0 11-8 0 4 4 0 018 0zM20 8v6M23 11h-6"></path></svg>
+                    <span class="text-[11px] font-medium">Requests</span>
+                    <span id="pendingDot" class="hidden nav-dot"></span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- MEMBER DASHBOARD -->
+    <div id="memberDashboard" class="hidden min-h-screen">
+        <div class="max-w-4xl mx-auto p-4 sm:p-6">
+            <header class="glass rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 flex justify-between items-center animate-fade-in-up sticky top-3 z-30 shadow-xl">
+                <div class="min-w-0">
+                    <h1 class="text-lg sm:text-2xl font-bold text-white truncate">Welcome, <span id="memberName"></span></h1>
+                    <p class="text-gray-400 text-xs sm:text-sm truncate">Member ID: <span id="memberIdDisplay"></span></p>
+                </div>
+                <button id="memberLogoutBtn" class="bg-red-600/90 hover:bg-red-600 px-3 sm:px-4 py-2 rounded-xl text-white transition btn-pop text-sm font-medium shrink-0">Logout</button>
+            </header>
+
+            <div class="glass rounded-2xl p-4 sm:p-6 mb-4 sm:mb-6 animate-fade-in-up stagger-1">
+                <h2 class="text-lg sm:text-xl font-bold text-white mb-4">Payment History</h2>
+
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full">
+                        <thead>
+                            <tr class="border-b border-white/10">
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Month</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Year</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Amount</th>
+                                <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="memberPaymentsTable"></tbody>
+                    </table>
+                </div>
+                <div class="md:hidden space-y-3" id="memberPaymentsCards"></div>
+            </div>
+
+            <div class="glass rounded-2xl p-4 sm:p-6 animate-fade-in-up stagger-2">
+                <h2 class="text-lg sm:text-xl font-bold text-white mb-4">Monthly Expenses</h2>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4" id="memberExpensesContainer">
+                    <!-- Expenses will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Member Modal -->
+    <div id="addMemberModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Add New Member</h3>
+            <form id="addMemberForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Member ID</label>
+                    <input type="text" id="newMemberId" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Name</label>
+                    <input type="text" id="newMemberName" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Password</label>
+                    <input type="password" id="newMemberPassword" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Role</label>
+                    <select id="newMemberRole" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Add</button>
+                    <button type="button" onclick="closeModal('addMemberModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Member Modal -->
+    <div id="editMemberModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Edit Member</h3>
+            <form id="editMemberForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Member ID</label>
+                    <input type="text" id="editMemberId" disabled class="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-gray-500 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Name</label>
+                    <input type="text" id="editMemberName" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Password (Leave blank to keep current)</label>
+                    <input type="password" id="editMemberPassword" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Role</label>
+                    <select id="editMemberRole" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div id="editWarning" class="bg-yellow-900/50 border border-yellow-600 text-yellow-200 px-4 py-3 rounded-xl text-sm hidden">
+                    You are about to change this user's admin status. This action will affect their access permissions.
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Save Changes</button>
+                    <button type="button" onclick="closeModal('editMemberModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Expense Modal -->
+    <div id="addExpenseModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-6">Add Expense</h3>
+            <form id="addExpenseForm" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-gray-400 mb-2 text-sm">Month</label>
+                        <select id="expenseMonth" required class="w-full px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                            <option value="1">January</option><option value="2">February</option><option value="3">March</option>
+                            <option value="4">April</option><option value="5">May</option><option value="6">June</option>
+                            <option value="7">July</option><option value="8">August</option><option value="9">September</option>
+                            <option value="10">October</option><option value="11">November</option><option value="12">December</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-gray-400 mb-2 text-sm">Year</label>
+                        <select id="expenseYear" required class="w-full px-3 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white"></select>
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Electricity Bill (₹)</label>
+                    <input type="number" id="electricityBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Water Bill (₹)</label>
+                    <input type="number" id="waterBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Internet Bill (₹)</label>
+                    <input type="number" id="internetBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Miscellaneous (₹)</label>
+                    <input type="number" id="miscellaneousBill" min="0" value="0" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Add</button>
+                    <button type="button" onclick="closeModal('addExpenseModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Approve Registration Modal -->
+    <div id="approveRegistrationModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in max-h-[85vh] overflow-y-auto">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-2">Approve Registration</h3>
+            <p class="text-gray-400 mb-6 text-sm">Assign a Member ID and password. Share these with <span id="approveRegName" class="text-orange-400"></span> once approved.</p>
+            <form id="approveRegistrationForm" class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Member ID</label>
+                    <input type="text" id="approveMemberId" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Password</label>
+                    <input type="password" id="approvePassword" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label class="block text-gray-400 mb-2 text-sm">Role</label>
+                    <select id="approveRole" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
+                        <option value="member">Member</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 gradient-bg py-2.5 rounded-xl text-white transition btn-pop font-medium">Approve</button>
+                    <button type="button" onclick="closeModal('approveRegistrationModal')" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Generic Confirm Modal -->
+    <div id="confirmModal" class="overlay-flex hidden fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+        <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-sm animate-scale-in">
+            <h3 id="confirmModalTitle" class="text-lg sm:text-xl font-bold text-white mb-3">Are you sure?</h3>
+            <p id="confirmModalMessage" class="text-gray-400 mb-6 text-sm"></p>
+            <div class="flex gap-3">
+                <button id="confirmModalConfirmBtn" class="flex-1 bg-red-600 hover:bg-red-700 py-2.5 rounded-xl text-white transition btn-pop font-medium">Confirm</button>
+                <button id="confirmModalCancelBtn" class="flex-1 bg-white/10 py-2.5 rounded-xl text-white transition btn-pop font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toastContainer" class="fixed top-4 left-4 right-4 md:left-auto md:right-4 z-[60] flex flex-col gap-3 items-stretch md:items-end"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
