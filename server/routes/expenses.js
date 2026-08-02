@@ -16,6 +16,7 @@ router.get('/', requireAuth, (req, res) => {
     electricityBill: e.electricity_bill,
     waterBill: e.water_bill,
     internetBill: e.internet_bill,
+    rent: e.rent,
     miscellaneous: e.miscellaneous,
     totalExpense: e.total_expense
   })));
@@ -26,16 +27,17 @@ router.post('/', requireAuth, requireAdmin, (req, res) => {
   const electricityBill = parseFloat(req.body.electricityBill) || 0;
   const waterBill = parseFloat(req.body.waterBill) || 0;
   const internetBill = parseFloat(req.body.internetBill) || 0;
+  const rent = parseFloat(req.body.rent) || 0;
   const miscellaneous = parseFloat(req.body.miscellaneous) || 0;
 
   if (!month || !year) return res.status(400).json({ error: 'Month and year are required' });
 
-  const totalExpense = electricityBill + waterBill + internetBill + miscellaneous;
+  const totalExpense = electricityBill + waterBill + internetBill + rent + miscellaneous;
 
   const result = db.prepare(`
-    INSERT INTO expenses (month, year, electricity_bill, water_bill, internet_bill, miscellaneous, total_expense)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(month, year, electricityBill, waterBill, internetBill, miscellaneous, totalExpense);
+    INSERT INTO expenses (month, year, electricity_bill, water_bill, internet_bill, rent, miscellaneous, total_expense)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(month, year, electricityBill, waterBill, internetBill, rent, miscellaneous, totalExpense);
 
   res.status(201).json({ message: 'Expense added', id: result.lastInsertRowid });
 });

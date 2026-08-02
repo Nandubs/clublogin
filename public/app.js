@@ -372,6 +372,7 @@ async function loadExpenses() {
                 <td class="py-3 px-4 text-center text-white">₹${e.electricityBill}</td>
                 <td class="py-3 px-4 text-center text-white">₹${e.waterBill}</td>
                 <td class="py-3 px-4 text-center text-white">₹${e.internetBill}</td>
+                <td class="py-3 px-4 text-center text-white">₹${e.rent}</td>
                 <td class="py-3 px-4 text-center text-white">₹${e.miscellaneous}</td>
                 <td class="py-3 px-4 text-center text-green-400">₹${e.totalExpense}</td>
                 <td class="py-3 px-4 text-center">
@@ -390,6 +391,7 @@ async function loadExpenses() {
                     <div class="flex justify-between"><span class="text-gray-500">Electricity</span><span class="text-white">₹${e.electricityBill}</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Water</span><span class="text-white">₹${e.waterBill}</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Internet</span><span class="text-white">₹${e.internetBill}</span></div>
+                    <div class="flex justify-between"><span class="text-gray-500">Rent</span><span class="text-white">₹${e.rent}</span></div>
                     <div class="flex justify-between"><span class="text-gray-500">Misc</span><span class="text-white">₹${e.miscellaneous}</span></div>
                 </div>
                 <div class="flex justify-between items-center pt-2 border-t border-white/10">
@@ -603,6 +605,26 @@ async function initMember() {
     await loadMemberExpenses();
 }
 
+const CLUB_UPI_ID = 'kiransathyadevan@okicici';
+const CLUB_UPI_PAYEE_NAME = 'Brahmastra Arts and Sports Club';
+
+function buildUpiLink(amount, note) {
+    const params = new URLSearchParams({
+        pa: CLUB_UPI_ID,
+        pn: CLUB_UPI_PAYEE_NAME,
+        am: String(amount),
+        cu: 'INR',
+        tn: note
+    });
+    return `upi://pay?${params.toString()}`;
+}
+
+function payButtonHtml(p) {
+    if (p.status === 'paid') return '<span class="text-gray-600 text-sm">&mdash;</span>';
+    const note = `Brahmastra Club fee - ${monthNames[p.month]} ${p.year}`;
+    return `<a href="${buildUpiLink(p.amount || 100, note)}" class="inline-block gradient-bg text-white text-sm font-medium px-3 py-1.5 rounded-lg transition btn-pop">Pay via UPI</a>`;
+}
+
 async function loadMemberPayments() {
     try {
         const data = await apiCall('/members/me');
@@ -616,16 +638,18 @@ async function loadMemberPayments() {
                 <td class="py-3 px-4 text-center">
                     <span class="${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
                 </td>
+                <td class="py-3 px-4 text-center">${payButtonHtml(p)}</td>
             </tr>
         `).join('');
 
         document.getElementById('memberPaymentsCards').innerHTML = payments.map(p => `
-            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in flex items-center justify-between">
-                <div>
+            <div class="bg-black/30 border border-white/10 rounded-2xl p-4 animate-fade-in flex items-center justify-between gap-3">
+                <div class="min-w-0">
                     <p class="text-white font-semibold">${monthNames[p.month]} ${p.year}</p>
                     <p class="text-gray-500 text-xs">₹${p.amount || 100}</p>
+                    <span class="text-sm font-medium ${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
                 </div>
-                <span class="text-sm font-medium ${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
+                ${payButtonHtml(p)}
             </div>
         `).join('');
     } catch (error) {
@@ -665,6 +689,10 @@ async function loadMemberExpenses() {
                     <div class="flex justify-between items-center py-2 border-b border-white/10">
                         <span class="text-gray-400 text-sm">Internet</span>
                         <span class="text-white font-semibold">₹${e.internetBill || 0}</span>
+                    </div>
+                    <div class="flex justify-between items-center py-2 border-b border-white/10">
+                        <span class="text-gray-400 text-sm">Rent</span>
+                        <span class="text-white font-semibold">₹${e.rent || 0}</span>
                     </div>
                     <div class="flex justify-between items-center py-2 border-b border-white/10">
                         <span class="text-gray-400 text-sm">Miscellaneous</span>
@@ -724,6 +752,7 @@ document.getElementById('addExpenseForm').addEventListener('submit', async (e) =
                 electricityBill: parseFloat(document.getElementById('electricityBill').value) || 0,
                 waterBill: parseFloat(document.getElementById('waterBill').value) || 0,
                 internetBill: parseFloat(document.getElementById('internetBill').value) || 0,
+                rent: parseFloat(document.getElementById('rentBill').value) || 0,
                 miscellaneous: parseFloat(document.getElementById('miscellaneousBill').value) || 0
             })
         });

@@ -149,6 +149,7 @@ db.ready = (async () => {
       electricity_bill REAL NOT NULL DEFAULT 0,
       water_bill REAL NOT NULL DEFAULT 0,
       internet_bill REAL NOT NULL DEFAULT 0,
+      rent REAL NOT NULL DEFAULT 0,
       miscellaneous REAL NOT NULL DEFAULT 0,
       total_expense REAL NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -168,6 +169,7 @@ db.ready = (async () => {
   ensureColumn('members', 'location', 'TEXT');
   ensureColumn('registrations', 'whatsapp', 'TEXT');
   ensureColumn('registrations', 'location', 'TEXT');
+  ensureColumn('expenses', 'rent', 'REAL NOT NULL DEFAULT 0');
 
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
   if (memberCount === 0) {
