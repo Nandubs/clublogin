@@ -18,6 +18,25 @@ async function start() {
   const app = express();
   app.use(express.json());
 
+  const allowedOrigins = new Set(
+    (process.env.CORS_ORIGINS || 'https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in')
+      .split(',')
+      .map(origin => origin.trim())
+      .filter(Boolean)
+  );
+  app.use((req, res, next) => {
+    const origin = req.get('Origin');
+    if (origin && allowedOrigins.has(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization,Content-Type');
+      res.setHeader('Access-Control-Max-Age', '86400');
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+  });
+
   app.use('/api/auth', authRoutes);
   app.use('/api/registrations', registrationRoutes);
   app.use('/api/members', memberRoutes);

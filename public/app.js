@@ -1,5 +1,5 @@
 // ==================== API CONFIGURATION ====================
-const API_BASE_URL = '/api';
+const API_BASE_URL = window.APP_CONFIG?.apiBaseUrl || '/api';
 let authToken = localStorage.getItem('authToken');
 let currentUser = null;
 let currentEditingMember = null;
@@ -1556,9 +1556,12 @@ async function loadGameLeaderboard() {
     }
 }
 
-document.getElementById('gameStartBtn').addEventListener('click', startGame);
-document.getElementById('gamePlayAgainBtn').addEventListener('click', startGame);
-document.getElementById('gameSwingBtn').addEventListener('click', swingBat);
+const gameStartButton = document.getElementById('gameStartBtn');
+const gamePlayAgainButton = document.getElementById('gamePlayAgainBtn');
+const gameSwingButton = document.getElementById('gameSwingBtn');
+if (gameStartButton) gameStartButton.addEventListener('click', startGame);
+if (gamePlayAgainButton) gamePlayAgainButton.addEventListener('click', startGame);
+if (gameSwingButton) gameSwingButton.addEventListener('click', swingBat);
 
 // ==================== STUMP DASH GAME ====================
 const DINO_GRAVITY = 2200; // px/s^2, in canvas coordinate space
