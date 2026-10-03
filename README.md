@@ -11,7 +11,7 @@ npm install
 Copy-Item .env.example .env
 ```
 
-Set a private, random `JWT_SECRET` in `.env`, then start the server:
+Set a private, random `JWT_SECRET` and a strong `INITIAL_ADMIN_PASSWORD` in `.env`, then start the server. `INITIAL_ADMIN_PASSWORD` is used only when creating the first admin account in an empty database.
 
 ```powershell
 npm start
@@ -62,10 +62,12 @@ The debug APK is written to `android\app\build\outputs\apk\debug\app-debug.apk`.
 
 ### Deploy `brahmastravakkom.in` before release
 
-1. Purchase/configure a server that supports Node.js 20 or newer. A domain registration alone does not host the app.
-2. Deploy this Node.js server with a persistent disk mounted as `DATA_DIR`. Set a private `JWT_SECRET` and `CORS_ORIGINS=https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in` in the hosting environment.
-3. In GoDaddy DNS, point `brahmastravakkom.in` and (if desired) `www.brahmastravakkom.in` to the deployed server using the DNS records provided by the hosting provider. Enable HTTPS and verify `https://brahmastravakkom.in/api/auth/login` is reachable.
-4. Run `npm run android:sync`, build and test the Android app against that API, then create a signed release build in Android Studio before distribution.
+1. Create a Render Web Service from the GitHub repository and deploy the `main` branch. Use `npm install` as the build command and `npm start` as the start command.
+2. Attach a persistent disk to the service at `/var/data`. Render requires a paid web service for persistent disks. Set `DATA_DIR=/var/data` so the SQLite database survives deploys and restarts.
+3. Set `JWT_SECRET` to a private random value, `INITIAL_ADMIN_PASSWORD` to a strong password you will use for the initial `brahmastra01` login, and `CORS_ORIGINS=https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in` in the hosting environment. Never commit these secrets.
+4. Wait for a successful deployment and test the generated `onrender.com` address. In the Render service settings, add `brahmastravakkom.in` as a custom domain and follow the DNS records Render displays.
+5. In GoDaddy DNS, add the records Render specifies for the root domain and (if desired) `www`. Remove conflicting `AAAA` records, then verify the domain in Render and wait for HTTPS to activate.
+6. Run `npm run android:sync`, build and test the Android app against the live API, then create a signed release build in Android Studio before distribution.
 
 The API URL for native builds is configured in `public/index.html`. If the production API moves to another domain, update that URL and rebuild the Android app. Use a persistent volume and regular backups for the SQLite database.
 

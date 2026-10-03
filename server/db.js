@@ -198,12 +198,16 @@ db.ready = (async () => {
 
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
   if (memberCount === 0) {
-    const passwordHash = bcrypt.hashSync('password', 10);
+    const initialAdminPassword = process.env.INITIAL_ADMIN_PASSWORD;
+    if (!initialAdminPassword) {
+      throw new Error('INITIAL_ADMIN_PASSWORD is required to initialize the admin account');
+    }
+    const passwordHash = bcrypt.hashSync(initialAdminPassword, 10);
     db.prepare(`
       INSERT INTO members (member_id, name, mobile, address, password_hash, role)
       VALUES (?, ?, ?, ?, ?, ?)
     `).run('brahmastra01', 'Club Admin', '', '', passwordHash, 'admin');
-    console.log('Seeded default admin: brahmastra01 / password');
+    console.log('Seeded initial admin account: brahmastra01');
   }
 })();
 
