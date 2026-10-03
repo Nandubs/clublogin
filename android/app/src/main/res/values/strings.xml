@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Brahmastra Club</string>
+    <string name="title_activity_main">Brahmastra Club</string>
+    <string name="package_name">com.brahmastra.club</string>
+    <string name="custom_url_scheme">com.brahmastra.club</string>
+</resources>

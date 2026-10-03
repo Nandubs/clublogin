@@ -1,0 +1,8 @@
+{
+  "appId": "com.brahmastra.club",
+  "appName": "Brahmastra Club",
+  "webDir": "public",
+  "server": {
+    "androidScheme": "https"
+  }
+}
