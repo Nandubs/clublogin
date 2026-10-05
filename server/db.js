@@ -112,6 +112,8 @@ db.ready = (async () => {
       member_id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       mobile TEXT,
+      email TEXT,
+      email_verified_at TEXT,
       whatsapp TEXT,
       address TEXT,
       location TEXT,
@@ -157,6 +159,18 @@ db.ready = (async () => {
       paid_at TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS otp_challenges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      member_id TEXT NOT NULL REFERENCES members(member_id) ON DELETE CASCADE,
+      purpose TEXT NOT NULL CHECK (purpose IN ('email_verification', 'password_reset')),
+      email TEXT NOT NULL,
+      code_hash TEXT NOT NULL,
+      expires_at INTEGER NOT NULL,
+      attempts INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL,
+      used_at INTEGER
+    );
+
     CREATE TABLE IF NOT EXISTS expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month INTEGER NOT NULL,
@@ -198,6 +212,8 @@ db.ready = (async () => {
     }
   }
   ensureColumn('members', 'whatsapp', 'TEXT');
+  ensureColumn('members', 'email', 'TEXT');
+  ensureColumn('members', 'email_verified_at', 'TEXT');
   ensureColumn('members', 'location', 'TEXT');
   ensureColumn('members', 'blood_group', 'TEXT');
   ensureColumn('registrations', 'whatsapp', 'TEXT');
@@ -207,6 +223,13 @@ db.ready = (async () => {
   ensureColumn('expenses', 'amount_from_abroad', 'REAL NOT NULL DEFAULT 0');
   ensureColumn('payments', 'reminded_at', 'TEXT');
   ensureColumn('game_scores', 'game', "TEXT NOT NULL DEFAULT 'six_hitter'");
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_members_verified_email
+    ON members (lower(email))
+    WHERE email IS NOT NULL AND email_verified_at IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_otp_challenges_member_purpose
+    ON otp_challenges (member_id, purpose, created_at);
+  `);
 
   const memberCount = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
   if (memberCount === 0) {

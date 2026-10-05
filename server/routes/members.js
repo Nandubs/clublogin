@@ -8,7 +8,7 @@ const router = express.Router();
 const MAIN_ADMIN = 'brahmastra01';
 
 router.get('/me', requireAuth, (req, res) => {
-  const member = db.prepare('SELECT member_id, name, mobile, whatsapp, address, location, blood_group, role FROM members WHERE member_id = ?').get(req.user.memberId);
+  const member = db.prepare('SELECT member_id, name, mobile, email, email_verified_at, whatsapp, address, location, blood_group, role FROM members WHERE member_id = ?').get(req.user.memberId);
   if (!member) return res.status(404).json({ error: 'Member not found' });
 
   const monthlyPayments = db.prepare(`
@@ -20,6 +20,8 @@ router.get('/me', requireAuth, (req, res) => {
     memberId: member.member_id,
     memberName: member.name,
     mobile: member.mobile,
+    email: member.email,
+    emailVerified: !!member.email_verified_at,
     whatsapp: member.whatsapp,
     address: member.address,
     location: member.location,

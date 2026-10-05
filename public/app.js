@@ -165,6 +165,43 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'ArrowRight') showClubPhoto(currentClubPhotoIndex + 1);
 });
 
+// Alternate the login welcome panel and membership invitation every 10 seconds.
+let activeLoginFeature = 0;
+let loginFeatureTimer = null;
+
+function setLoginFeature(index) {
+    activeLoginFeature = index % 2;
+    const panels = [
+        document.getElementById('loginFeaturePoster'),
+        document.getElementById('loginFeatureRegistration')
+    ];
+    panels.forEach((panel, panelIndex) => {
+        const active = panelIndex === activeLoginFeature;
+        panel.classList.toggle('is-active', active);
+        panel.setAttribute('aria-hidden', String(!active));
+        panel.querySelectorAll('button').forEach(button => {
+            button.tabIndex = active ? 0 : -1;
+        });
+    });
+}
+
+function stopLoginFeatureRotation() {
+    if (loginFeatureTimer) window.clearInterval(loginFeatureTimer);
+    loginFeatureTimer = null;
+}
+
+function startLoginFeatureRotation() {
+    stopLoginFeatureRotation();
+    if (document.hidden || document.getElementById('loginPage').classList.contains('hidden')) return;
+    loginFeatureTimer = window.setInterval(() => {
+        setLoginFeature(activeLoginFeature + 1);
+    }, 10000);
+}
+
+document.getElementById('loginFeatureRegisterBtn').addEventListener('click', () => showPage('registerPage'));
+document.addEventListener('visibilitychange', startLoginFeatureRotation);
+startLoginFeatureRotation();
+
 // ==================== PAGINATION ====================
 const PAGE_SIZE = 10;
 const paginationState = {};
@@ -261,6 +298,8 @@ function showPage(id) {
     ['loginPage', 'registerPage', 'registerPendingPage', 'adminDashboard', 'memberDashboard'].forEach(pageId => {
         document.getElementById(pageId).classList.toggle('hidden', pageId !== id);
     });
+    if (id === 'loginPage') startLoginFeatureRotation();
+    else stopLoginFeatureRotation();
 }
 
 // ==================== LOGIN / REGISTER NAVIGATION ====================
@@ -293,6 +332,77 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             showPage('memberDashboard');
             await initMember();
         }
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('hidden');
+    }
+});
+
+document.getElementById('forgotPasswordBtn').addEventListener('click', () => {
+    document.getElementById('passwordResetForm').reset();
+    document.getElementById('passwordResetError').classList.add('hidden');
+    document.getElementById('resetCodeFields').classList.add('hidden');
+    document.getElementById('resetMemberId').value = document.getElementById('userId').value.trim();
+    openModal('passwordResetModal');
+});
+document.getElementById('closePasswordResetBtn').addEventListener('click', () => closeModal('passwordResetModal'));
+
+document.getElementById('requestResetCodeBtn').addEventListener('click', async () => {
+    const errorDiv = document.getElementById('passwordResetError');
+    errorDiv.classList.add('hidden');
+    const memberId = document.getElementById('resetMemberId').value.trim();
+    if (!memberId) {
+        errorDiv.textContent = 'Enter your member ID first';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const result = await apiCall('/auth/password-reset/request', {
+            method: 'POST',
+            body: JSON.stringify({ memberId })
+        });
+        document.getElementById('resetCodeMessage').textContent = result.message;
+        document.getElementById('resetCodeFields').classList.remove('hidden');
+    } catch (error) {
+        errorDiv.textContent = error.message;
+        errorDiv.classList.remove('hidden');
+    }
+});
+
+document.getElementById('passwordResetForm').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const errorDiv = document.getElementById('passwordResetError');
+    errorDiv.classList.add('hidden');
+    const memberId = document.getElementById('resetMemberId').value.trim();
+    const code = document.getElementById('resetOtp').value.trim();
+    const newPassword = document.getElementById('resetNewPassword').value;
+    const confirmPassword = document.getElementById('resetConfirmPassword').value;
+
+    if (!/^\d{6}$/.test(code)) {
+        errorDiv.textContent = 'Enter the six-digit code from your email';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        errorDiv.textContent = 'New passwords do not match';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+    if (newPassword.length < 8) {
+        errorDiv.textContent = 'Password must be at least 8 characters';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const result = await apiCall('/auth/password-reset/confirm', {
+            method: 'POST',
+            body: JSON.stringify({ memberId, code, newPassword })
+        });
+        closeModal('passwordResetModal');
+        document.getElementById('passwordResetForm').reset();
+        toast(result.message, 'success');
     } catch (error) {
         errorDiv.textContent = error.message;
         errorDiv.classList.remove('hidden');
@@ -1484,6 +1594,12 @@ function openEditProfileModal() {
     document.getElementById('editProfileError').classList.add('hidden');
     document.getElementById('profileMemberId').value = currentMemberProfile.memberId;
     document.getElementById('profileName').value = currentMemberProfile.memberName;
+    document.getElementById('profileEmail').value = currentMemberProfile.email || '';
+    document.getElementById('profileEmailStatus').textContent = currentMemberProfile.emailVerified
+        ? 'Verified email — available for password recovery.'
+        : 'Not verified yet. Verify this address so you can reset your password.';
+    document.getElementById('profileEmailCodeFields').classList.add('hidden');
+    document.getElementById('profileEmailCode').value = '';
     document.getElementById('profileWhatsapp').value = currentMemberProfile.whatsapp || '';
     document.getElementById('profileLocation').value = currentMemberProfile.location || 'India';
     document.getElementById('profileBloodGroup').value = currentMemberProfile.bloodGroup || '';
@@ -1491,6 +1607,49 @@ function openEditProfileModal() {
     openModal('editProfileModal');
 }
 document.getElementById('editProfileBtn').addEventListener('click', openEditProfileModal);
+
+document.getElementById('sendEmailVerificationBtn').addEventListener('click', async () => {
+    const email = document.getElementById('profileEmail').value.trim();
+    const status = document.getElementById('profileEmailStatus');
+    status.textContent = '';
+    if (!email) {
+        status.textContent = 'Enter an email address first.';
+        return;
+    }
+
+    try {
+        const result = await apiCall('/auth/email/verification/request', {
+            method: 'POST',
+            body: JSON.stringify({ email })
+        });
+        status.textContent = result.message;
+        if (!currentMemberProfile.emailVerified || currentMemberProfile.email !== email.toLowerCase()) {
+            document.getElementById('profileEmailCodeFields').classList.remove('hidden');
+        }
+    } catch (error) {
+        status.textContent = error.message;
+    }
+});
+
+document.getElementById('verifyProfileEmailBtn').addEventListener('click', async () => {
+    const email = document.getElementById('profileEmail').value.trim();
+    const code = document.getElementById('profileEmailCode').value.trim();
+    const status = document.getElementById('profileEmailStatus');
+    try {
+        const result = await apiCall('/auth/email/verification/confirm', {
+            method: 'POST',
+            body: JSON.stringify({ email, code })
+        });
+        currentMemberProfile.email = result.email;
+        currentMemberProfile.emailVerified = true;
+        document.getElementById('profileEmail').value = result.email;
+        document.getElementById('profileEmailCodeFields').classList.add('hidden');
+        status.textContent = 'Email verified — available for password recovery.';
+        toast('Recovery email verified successfully!', 'success');
+    } catch (error) {
+        status.textContent = error.message;
+    }
+});
 
 document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
     e.preventDefault();

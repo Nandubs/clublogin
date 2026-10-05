@@ -21,6 +21,12 @@ npm start
 
 Open `http://localhost:4000`. The local SQLite database is stored in `server/data/club.db`.
 
+## Email verification and password recovery
+
+Members can add and verify a recovery email from **Edit Profile** after signing in. The login page's **Forgot password?** flow sends a six-digit code only to that verified email. Codes expire after 10 minutes, are limited to five attempts, and requests are rate-limited per account.
+
+Configure `GMAIL_USER` and `GMAIL_APP_PASSWORD` in the hosting environment (Railway Variables in production). Use a Google App Password for the sending Gmail account, not its regular password. Google requires two-step verification to create an App Password. Keep both values private and never commit them. Existing members must sign in once to add and verify their email; members who cannot sign in and have not verified an email must contact an administrator for account recovery.
+
 ## Android app (Capacitor)
 
 The Android app packages the existing `public` web interface. It sends API requests to `https://brahmastravakkom.in/api`. The domain must point to a deployed backend that is reachable over HTTPS before members can sign in from Android.
