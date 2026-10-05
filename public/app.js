@@ -1678,7 +1678,13 @@ function setupTabs() {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.getElementById(btn.dataset.tab + 'Tab').classList.remove('hidden');
 
-            if (btn.dataset.tab === 'payments') loadPayments();
+            if (btn.dataset.tab === 'payments') {
+                paymentsSearchTerm = '';
+                document.getElementById('paymentSearch').value = '';
+                paymentsFilter = 'all';
+                updatePaymentFilterButtons();
+                loadPayments();
+            }
             if (btn.dataset.tab === 'expenses') loadExpenses();
             if (btn.dataset.tab === 'registrations') loadRegistrations();
         });
