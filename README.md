@@ -2,6 +2,8 @@
 
 Membership and payment management app for Brahmastra Arts & Sports Club.
 
+The public login page displays the 17 photos from `public/club-gallery` before sign-in. Selecting a thumbnail opens a photo viewer; keep only images approved for public viewing in that folder.
+
 ## Run the web app
 
 Requires Node.js 20 or newer.
@@ -11,7 +13,7 @@ npm install
 Copy-Item .env.example .env
 ```
 
-Set a private, random `JWT_SECRET` in `.env`, then start the server:
+Set a private, random `JWT_SECRET` and a strong `INITIAL_ADMIN_PASSWORD` in `.env`, then start the server. `INITIAL_ADMIN_PASSWORD` is used only when creating the first admin account in an empty database.
 
 ```powershell
 npm start
@@ -62,10 +64,13 @@ The debug APK is written to `android\app\build\outputs\apk\debug\app-debug.apk`.
 
 ### Deploy `brahmastravakkom.in` before release
 
-1. Purchase/configure a server that supports Node.js 20 or newer. A domain registration alone does not host the app.
-2. Deploy this Node.js server with a persistent disk mounted as `DATA_DIR`. Set a private `JWT_SECRET` and `CORS_ORIGINS=https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in` in the hosting environment.
-3. In GoDaddy DNS, point `brahmastravakkom.in` and (if desired) `www.brahmastravakkom.in` to the deployed server using the DNS records provided by the hosting provider. Enable HTTPS and verify `https://brahmastravakkom.in/api/auth/login` is reachable.
-4. Run `npm run android:sync`, build and test the Android app against that API, then create a signed release build in Android Studio before distribution.
+1. Deploy the GitHub `main` branch to Railway with `npm install` as the build command and `npm start` as the start command.
+2. Attach a Railway volume mounted at `/data` and set `DATA_DIR=/data` so SQLite data persists across deploys and restarts.
+3. Set private `JWT_SECRET` and `INITIAL_ADMIN_PASSWORD` variables. Also set `CORS_ORIGINS=https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in`. Never commit secrets.
+4. Add `www.brahmastravakkom.in` as a Railway custom domain and configure the exact CNAME and TXT records Railway displays in GoDaddy DNS. Verify the domain and HTTPS.
+5. For Razorpay payments, set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` as Railway variables. Start with Razorpay test-mode API keys and enable automatic payment capture in the Razorpay Dashboard. Configure a `payment.captured` webhook at `https://www.brahmastravakkom.in/api/checkout/webhook` and use its generated secret as `RAZORPAY_WEBHOOK_SECRET`.
+6. Test order creation, successful and failed checkout, and payment status updates in test mode before switching to live keys. The app marks dues paid only after server-side Razorpay verification or a valid captured-payment webhook.
+7. Run `npm run android:sync`, build and test the Android app against the live API, then create a signed release build in Android Studio before distribution.
 
 The API URL for native builds is configured in `public/index.html`. If the production API moves to another domain, update that URL and rebuild the Android app. Use a persistent volume and regular backups for the SQLite database.
 
