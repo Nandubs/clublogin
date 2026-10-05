@@ -884,6 +884,32 @@ function printPayments() {
     window.print();
 }
 
+async function downloadPaymentExcel() {
+    const year = document.getElementById('paymentYear').value;
+    try {
+        const response = await fetch(`${API_BASE_URL}/payments/export/${encodeURIComponent(year)}`, {
+            headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+        });
+        if (!response.ok) {
+            const result = await response.json();
+            throw new Error(result.error || 'Could not download the payment report');
+        }
+
+        const workbook = await response.blob();
+        const downloadUrl = URL.createObjectURL(workbook);
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `club-monthly-payments-${year}.xls`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+        toast(`Payment report for ${year} downloaded`, 'success');
+    } catch (error) {
+        toast(error.message, 'error');
+    }
+}
+
 function donationsSummaryHtml(donations) {
     if (!donations || donations.length === 0) return '<span class="text-gray-600">&mdash;</span>';
     const total = donations.reduce((sum, d) => sum + d.amount, 0);
@@ -1708,6 +1734,7 @@ function populateYears() {
 // ==================== EVENT LISTENERS ====================
 document.getElementById('addMemberBtn').addEventListener('click', () => openModal('addMemberModal'));
 document.getElementById('addExpenseBtn').addEventListener('click', () => openModal('addExpenseModal'));
+document.getElementById('downloadPaymentExcelBtn').addEventListener('click', downloadPaymentExcel);
 document.getElementById('printPaymentsBtn').addEventListener('click', printPayments);
 document.getElementById('remindAllBtn').addEventListener('click', remindAllUnpaid);
 document.getElementById('paymentMonth').addEventListener('change', loadPayments);

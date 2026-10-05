@@ -4,6 +4,8 @@ Membership and payment management app for Brahmastra Arts & Sports Club.
 
 The public login page displays the 17 photos from `public/club-gallery` before sign-in. Selecting a thumbnail opens a photo viewer; keep only images approved for public viewing in that folder.
 
+See [docs/architecture.md](docs/architecture.md) for the system architecture, main request flows, and data model.
+
 ## Run the web app
 
 Requires Node.js 20 or newer.
@@ -78,6 +80,7 @@ The debug APK is written to `android\app\build\outputs\apk\debug\app-debug.apk`.
 4. Add `www.brahmastravakkom.in` as a Railway custom domain and configure the exact CNAME and TXT records Railway displays in GoDaddy DNS. Verify the domain and HTTPS.
 5. For Razorpay payments, set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` as Railway variables. Start with Razorpay test-mode API keys and enable automatic payment capture in the Razorpay Dashboard. Configure a `payment.captured` webhook at `https://www.brahmastravakkom.in/api/checkout/webhook` and use its generated secret as `RAZORPAY_WEBHOOK_SECRET`.
 6. Test order creation, successful and failed checkout, and payment status updates in test mode before switching to live keys. Member online payments are marked paid only after server-side Razorpay verification or a valid captured-payment webhook. Administrators can also record dues received offline; **Mark as paid** is a manual status update and does not charge the member. The admin Payments tab includes a year-at-a-glance member/month status chart; selecting a cell opens that member's dues controls for the chosen month.
+   Administrators can download the selected year's complete member-by-month dues chart as an Excel-compatible `.xls` workbook using **Download Excel**. The export includes all current members, each month's paid/unpaid amount, and paid/unpaid totals, regardless of the chart search or status filter.
 7. Run `npm run android:sync`, build and test the Android app against the live API, then create a signed release build in Android Studio before distribution.
 
 The API URL for native builds is configured in `public/index.html`. If the production API moves to another domain, update that URL and rebuild the Android app. Use a persistent volume and regular backups for the SQLite database.

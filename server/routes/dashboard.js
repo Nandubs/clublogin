@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(requireAuth);
+const MAIN_ADMIN = 'brahmastra01';
 
 // Club-wide financial summary — intentionally open to any logged-in member
 // (not just admins) for transparency, not just the main admin dashboard.
@@ -12,12 +13,18 @@ router.get('/stats', (req, res) => {
   const month = now.getMonth() + 1;
   const year = now.getFullYear();
 
-  const totalMembers = db.prepare('SELECT COUNT(*) AS count FROM members').get().count;
+  const totalMembers = db.prepare(`
+    SELECT COUNT(*) AS count FROM members
+    WHERE member_id != ?
+  `).get(MAIN_ADMIN).count;
 
   const monthlyDues = db.prepare(`
-    SELECT COALESCE(SUM(amount), 0) AS total FROM payments
-    WHERE month = ? AND year = ? AND status = 'paid'
-  `).get(month, year).total;
+    SELECT COALESCE(SUM(p.amount), 0) AS total
+    FROM payments p
+    JOIN members m ON m.member_id = p.member_id
+    WHERE p.month = ? AND p.year = ? AND p.status = 'paid'
+      AND m.member_id != ?
+  `).get(month, year, MAIN_ADMIN).total;
 
   const monthlyAbroad = db.prepare(`
     SELECT COALESCE(SUM(amount_from_abroad), 0) AS total FROM expenses

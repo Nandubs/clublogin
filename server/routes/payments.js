@@ -9,12 +9,7 @@ router.use(requireAuth, requireAdmin);
 const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MAIN_ADMIN = 'brahmastra01';
 
-router.get('/year/:year', (req, res) => {
-  const year = parseInt(req.params.year, 10);
-  if (!year || String(year) !== req.params.year) {
-    return res.status(400).json({ error: 'A valid year is required' });
-  }
-
+function getYearlyPayments(year) {
   const rows = db.prepare(`
     SELECT m.member_id, m.name, p.month, p.amount, p.status
     FROM members m
@@ -44,7 +39,107 @@ router.get('/year/:year', (req, res) => {
     }
   }
 
-  res.json({ year, members: Array.from(members.values()) });
+  return Array.from(members.values());
+}
+
+function escapeXml(value) {
+  return String(value ?? '')
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+function spreadsheetCell(value, styleId = '', type = 'String', mergeAcross = 0) {
+  const style = styleId ? ` ss:StyleID="${styleId}"` : '';
+  const merge = mergeAcross ? ` ss:MergeAcross="${mergeAcross}"` : '';
+  return `<Cell${style}${merge}><Data ss:Type="${type}">${escapeXml(value)}</Data></Cell>`;
+}
+
+function yearlyPaymentsSpreadsheet(year, members) {
+  const headers = ['Member ID', 'Member Name', ...MONTH_NAMES.slice(1), 'Paid total (INR)', 'Unpaid total (INR)'];
+  const titleRow = `<Row ss:Height="28">${spreadsheetCell(`Brahmastra Club - Monthly Payment Details - ${year}`, 'Title', 'String', headers.length - 1)}</Row>`;
+  const headerRow = `<Row ss:Height="24">${headers.map(header => spreadsheetCell(header, 'Header')).join('')}</Row>`;
+  const memberRows = members.map(member => {
+    let paidTotal = 0;
+    let unpaidTotal = 0;
+    const monthCells = member.months.map(month => {
+      const isPaid = month.status === 'paid';
+      if (isPaid) paidTotal += month.amount;
+      else unpaidTotal += month.amount;
+      return spreadsheetCell(`${isPaid ? 'Paid' : 'Unpaid'} - INR ${month.amount}`, isPaid ? 'Paid' : 'Unpaid');
+    });
+
+    return `<Row ss:Height="24">${[
+      spreadsheetCell(member.memberId, 'Member'),
+      spreadsheetCell(member.memberName, 'Member'),
+      ...monthCells,
+      spreadsheetCell(paidTotal, 'Total', 'Number'),
+      spreadsheetCell(unpaidTotal, 'Total', 'Number')
+    ].join('')}</Row>`;
+  }).join('');
+
+  const columnWidths = [
+    '<Column ss:Width="110"/>',
+    '<Column ss:Width="180"/>',
+    ...Array.from({ length: 12 }, () => '<Column ss:Width="105"/>'),
+    '<Column ss:Width="115"/>',
+    '<Column ss:Width="125"/>'
+  ].join('');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="11"/></Style>
+  <Style ss:ID="Title"><Alignment ss:Horizontal="Left" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="15" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#174B38" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Header"><Alignment ss:Horizontal="Center" ss:Vertical="Center" ss:WrapText="1"/><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#174B38" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Member"><Alignment ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="10"/><Interior ss:Color="#F1F5F2" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Paid"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#14532D"/><Interior ss:Color="#BBF7D0" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Unpaid"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1" ss:Color="#991B1B"/><Interior ss:Color="#FECACA" ss:Pattern="Solid"/></Style>
+  <Style ss:ID="Total"><Alignment ss:Horizontal="Right" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Size="10" ss:Bold="1"/><NumberFormat ss:Format="#,##0"/><Interior ss:Color="#E8F1EB" ss:Pattern="Solid"/></Style>
+ </Styles>
+ <Worksheet ss:Name="Payment Chart">
+  <Table ss:ExpandedColumnCount="${headers.length}" ss:ExpandedRowCount="${members.length + 2}" x:FullColumns="1" x:FullRows="1">
+   ${columnWidths}
+   ${titleRow}
+   ${headerRow}
+   ${memberRows}
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <Selected/><FreezePanes/><FrozenNoSplit/><SplitHorizontal>2</SplitHorizontal><TopRowBottomPane>2</TopRowBottomPane>
+   <SplitVertical>2</SplitVertical><LeftColumnRightPane>2</LeftColumnRightPane><ActivePane>0</ActivePane><Pane><Number>0</Number></Pane>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>`;
+}
+
+function parseYear(param) {
+  const year = parseInt(param, 10);
+  return year >= 2000 && year <= 2100 && String(year) === param ? year : null;
+}
+
+router.get('/export/:year', (req, res) => {
+  const year = parseYear(req.params.year);
+  if (!year) return res.status(400).json({ error: 'A valid year is required' });
+
+  const members = getYearlyPayments(year);
+  const spreadsheet = yearlyPaymentsSpreadsheet(year, members);
+  res.setHeader('Content-Type', 'application/vnd.ms-excel; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="club-monthly-payments-${year}.xls"`);
+  res.send(`\uFEFF${spreadsheet}`);
+});
+
+router.get('/year/:year', (req, res) => {
+  const year = parseYear(req.params.year);
+  if (!year) return res.status(400).json({ error: 'A valid year is required' });
+  res.json({ year, members: getYearlyPayments(year) });
 });
 
 router.get('/', (req, res) => {
