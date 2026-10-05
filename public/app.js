@@ -44,11 +44,78 @@ function locationBadge(location) {
 const clubPhotos = Array.from({ length: 17 }, (_, index) => `club-gallery/${index + 1}.jpeg`);
 let currentClubPhotoIndex = 0;
 
-document.getElementById('clubPhotoGallery').innerHTML = clubPhotos.map((src, index) => `
+const carouselImage = document.getElementById('clubPhotoCarouselImage');
+const photoDots = document.getElementById('clubPhotoDots');
+const reducedPhotoMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+let photoCarouselTimer = null;
+
+photoDots.innerHTML = clubPhotos.map((_, index) => `
+    <button type="button" data-photo-index="${index}" aria-label="Show photo ${index + 1}" aria-current="${index === 0}"></button>
+`).join('');
+document.getElementById('clubPhotoAllGrid').innerHTML = clubPhotos.map((src, index) => `
     <button type="button" data-club-photo="${index}" aria-label="View club photo ${index + 1}">
-        <img src="${src}" alt="Brahmastra Club photo ${index + 1}" loading="${index < 4 ? 'eager' : 'lazy'}">
+        <img src="${src}" alt="Brahmastra Club photo ${index + 1}" loading="lazy">
     </button>
 `).join('');
+
+function setCarouselPhoto(index) {
+    currentClubPhotoIndex = (index + clubPhotos.length) % clubPhotos.length;
+    carouselImage.classList.add('is-changing');
+    window.setTimeout(() => {
+        carouselImage.src = clubPhotos[currentClubPhotoIndex];
+        carouselImage.alt = `Brahmastra Club photo ${currentClubPhotoIndex + 1}`;
+        document.getElementById('clubPhotoCarouselCaption').textContent =
+            `Photo ${currentClubPhotoIndex + 1} of ${clubPhotos.length}`;
+        photoDots.querySelectorAll('button').forEach((dot, dotIndex) => {
+            dot.setAttribute('aria-current', String(dotIndex === currentClubPhotoIndex));
+        });
+        carouselImage.classList.remove('is-changing');
+    }, reducedPhotoMotion.matches ? 0 : 220);
+}
+
+function stopPhotoCarousel() {
+    if (photoCarouselTimer) window.clearInterval(photoCarouselTimer);
+    photoCarouselTimer = null;
+}
+
+function startPhotoCarousel() {
+    stopPhotoCarousel();
+    if (reducedPhotoMotion.matches || document.hidden) return;
+    photoCarouselTimer = window.setInterval(() => {
+        setCarouselPhoto(currentClubPhotoIndex + 1);
+    }, 4000);
+}
+
+document.getElementById('clubPhotoPreviousSlide').addEventListener('click', () => {
+    setCarouselPhoto(currentClubPhotoIndex - 1);
+    startPhotoCarousel();
+});
+document.getElementById('clubPhotoNextSlide').addEventListener('click', () => {
+    setCarouselPhoto(currentClubPhotoIndex + 1);
+    startPhotoCarousel();
+});
+photoDots.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-photo-index]');
+    if (!button) return;
+    setCarouselPhoto(Number(button.dataset.photoIndex));
+    startPhotoCarousel();
+});
+document.getElementById('clubPhotoCarousel').addEventListener('click', (event) => {
+    if (event.target.closest('button')) return;
+    showClubPhoto(currentClubPhotoIndex);
+    document.getElementById('clubPhotoViewer').showModal();
+    stopPhotoCarousel();
+});
+document.getElementById('clubPhotoCarousel').addEventListener('mouseenter', stopPhotoCarousel);
+document.getElementById('clubPhotoCarousel').addEventListener('mouseleave', startPhotoCarousel);
+document.getElementById('clubPhotoCarousel').addEventListener('focusin', stopPhotoCarousel);
+document.getElementById('clubPhotoCarousel').addEventListener('focusout', startPhotoCarousel);
+document.addEventListener('visibilitychange', () => {
+    if (document.hidden) stopPhotoCarousel();
+    else startPhotoCarousel();
+});
+reducedPhotoMotion.addEventListener('change', startPhotoCarousel);
+startPhotoCarousel();
 
 function showClubPhoto(index) {
     currentClubPhotoIndex = (index + clubPhotos.length) % clubPhotos.length;
@@ -59,9 +126,21 @@ function showClubPhoto(index) {
         `Club photo ${currentClubPhotoIndex + 1} of ${clubPhotos.length}`;
 }
 
-document.getElementById('clubPhotoGallery').addEventListener('click', (event) => {
+document.getElementById('viewAllClubPhotos').addEventListener('click', () => {
+    stopPhotoCarousel();
+    document.getElementById('clubPhotoAllDialog').showModal();
+});
+document.getElementById('clubPhotoAllClose').addEventListener('click', () => {
+    document.getElementById('clubPhotoAllDialog').close();
+});
+document.getElementById('clubPhotoAllDialog').addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+});
+document.getElementById('clubPhotoAllDialog').addEventListener('close', startPhotoCarousel);
+document.getElementById('clubPhotoAllGrid').addEventListener('click', (event) => {
     const button = event.target.closest('[data-club-photo]');
     if (!button) return;
+    document.getElementById('clubPhotoAllDialog').close();
     showClubPhoto(Number(button.dataset.clubPhoto));
     document.getElementById('clubPhotoViewer').showModal();
 });
@@ -78,6 +157,7 @@ document.getElementById('clubPhotoViewerClose').addEventListener('click', () => 
 document.getElementById('clubPhotoViewer').addEventListener('click', (event) => {
     if (event.target === event.currentTarget) event.currentTarget.close();
 });
+document.getElementById('clubPhotoViewer').addEventListener('close', startPhotoCarousel);
 document.addEventListener('keydown', (event) => {
     const viewer = document.getElementById('clubPhotoViewer');
     if (!viewer.open) return;

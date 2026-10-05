@@ -293,28 +293,92 @@
             border-radius: 1rem;
         }
         #loginPage > .w-full > .glass:nth-child(2) p:last-child { color: var(--muted); }
-        #clubPhotoGallery {
-            display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: .5rem;
-        }
-        #loginPage #clubPhotoGallery button {
+        #clubPhotoCarousel {
+            position: relative;
             overflow: hidden;
-            padding: 0;
-            border: 1px solid #e8eee9;
-            border-radius: .75rem;
-            background: #f3f6f3;
+            border-radius: 1rem;
+            background: #e9efeb;
         }
-        #loginPage #clubPhotoGallery button img {
+        #clubPhotoCarouselImage {
             display: block;
             width: 100%;
-            height: 5rem;
+            height: clamp(12rem, 30vw, 20rem);
+            object-fit: cover;
+            opacity: 1;
+            transform: scale(1);
+            transition: opacity .45s ease, transform 5s ease;
+        }
+        #loginPage #clubPhotoCarousel #clubPhotoCarouselImage {
+            width: 100%;
+            height: clamp(12rem, 30vw, 20rem);
+            border: 0;
+            border-radius: 0;
+        }
+        #clubPhotoCarouselImage.is-changing {
+            opacity: .2;
+            transform: scale(1.035);
+        }
+        .club-photo-carousel-control {
+            position: absolute;
+            top: 50%;
+            display: grid;
+            width: 2.5rem;
+            height: 2.5rem;
+            place-items: center;
+            transform: translateY(-50%);
+            border: 1px solid rgba(255, 255, 255, .7);
+            border-radius: 9999px;
+            background: rgba(20, 30, 24, .62);
+            color: white;
+            font-size: 1.25rem;
+            backdrop-filter: blur(8px);
+        }
+        #clubPhotoPreviousSlide { left: .75rem; }
+        #clubPhotoNextSlide { right: .75rem; }
+        #clubPhotoDots {
+            display: flex;
+            justify-content: center;
+            gap: .35rem;
+            padding-top: .75rem;
+        }
+        #clubPhotoDots button {
+            width: .45rem;
+            height: .45rem;
+            padding: 0;
+            border: 0;
+            border-radius: 9999px;
+            background: #cbd5ce;
+            transition: width .2s ease, background .2s ease;
+        }
+        #clubPhotoDots button[aria-current="true"] {
+            width: 1.25rem;
+            background: var(--accent-from);
+        }
+        #clubPhotoAllGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: .65rem;
+            max-height: 75dvh;
+            overflow-y: auto;
+        }
+        #clubPhotoAllGrid button {
+            overflow: hidden;
+            padding: 0;
+            border: 1px solid rgba(255, 255, 255, .15);
+            border-radius: .75rem;
+            background: rgba(255, 255, 255, .08);
+        }
+        #clubPhotoAllGrid button img {
+            display: block;
+            width: 100%;
+            height: 7rem;
             border: 0;
             border-radius: .65rem;
             object-fit: cover;
-            transition: transform .2s ease;
+            transition: transform .25s ease;
         }
-        #loginPage #clubPhotoGallery button:hover img { transform: scale(1.05); }
+        #clubPhotoAllGrid button:hover img { transform: scale(1.05); }
+        #clubPhotoAllDialog,
         #clubPhotoViewer {
             width: min(96vw, 900px);
             max-width: none;
@@ -325,6 +389,7 @@
             background: #171b19;
             color: white;
         }
+        #clubPhotoAllDialog::backdrop,
         #clubPhotoViewer::backdrop { background: rgba(8, 12, 10, .88); }
         #clubPhotoViewerImage {
             display: block;
@@ -393,8 +458,9 @@
             #loginPage > .w-full > .text-center > p { font-size: .72rem; }
             #loginPage > .w-full > .glass:nth-child(2) { grid-column: 1; grid-row: 2; padding: .75rem; }
             #loginPage > .w-full > .glass:nth-child(2) img { width: 3.5rem; height: 3.5rem; }
-            #loginPage #clubPhotoGallery { gap: .35rem; }
-            #loginPage #clubPhotoGallery button img { height: 4.25rem; }
+            #loginPage #clubPhotoCarousel #clubPhotoCarouselImage { height: 12rem; }
+            #clubPhotoAllGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+            #clubPhotoAllGrid button img { height: 6rem; }
             #clubPhotoViewer { padding: .6rem; }
             #clubPhotoViewerImage { height: 66dvh; }
             #loginPage > .w-full > .glass:nth-child(3) {
@@ -473,9 +539,18 @@
                 </div>
                 <div class="flex items-center justify-between gap-2 mb-3">
                     <h2 class="text-sm sm:text-base font-bold text-gray-800">Club Moments</h2>
-                    <span class="text-xs text-gray-500">17 photos</span>
+                    <button id="viewAllClubPhotos" type="button" class="text-xs sm:text-sm font-semibold text-emerald-700 hover:text-emerald-900">View all 17 photos</button>
                 </div>
-                <div id="clubPhotoGallery" aria-label="Brahmastra Club photo gallery"></div>
+                <div id="clubPhotoCarousel" aria-label="Brahmastra Club photos">
+                    <img id="clubPhotoCarouselImage" src="club-gallery/1.jpeg" alt="Brahmastra Club photo 1">
+                    <button id="clubPhotoPreviousSlide" type="button" class="club-photo-carousel-control" aria-label="Previous photo">&larr;</button>
+                    <button id="clubPhotoNextSlide" type="button" class="club-photo-carousel-control" aria-label="Next photo">&rarr;</button>
+                </div>
+                <div class="flex items-center justify-between mt-2">
+                    <span id="clubPhotoCarouselCaption" class="text-xs text-gray-500">Photo 1 of 17</span>
+                    <span class="text-xs text-gray-500">Photos from our club</span>
+                </div>
+                <div id="clubPhotoDots" aria-label="Choose a photo"></div>
             </div>
 
             <div class="glass rounded-3xl p-6 sm:p-8 shadow-2xl">
@@ -507,6 +582,17 @@
             </div>
         </div>
     </div>
+
+    <dialog id="clubPhotoAllDialog" aria-labelledby="clubPhotoAllTitle">
+        <div class="flex items-center justify-between gap-3 mb-4">
+            <div>
+                <h2 id="clubPhotoAllTitle" class="font-bold text-lg">All club photos</h2>
+                <p class="text-xs text-gray-400">Select a photo to view it full size.</p>
+            </div>
+            <button id="clubPhotoAllClose" type="button" class="rounded-lg px-3 py-2 bg-white/10 hover:bg-white/20">Close</button>
+        </div>
+        <div id="clubPhotoAllGrid"></div>
+    </dialog>
 
     <dialog id="clubPhotoViewer" aria-label="Club photo viewer">
         <div class="flex items-center justify-between gap-3 mb-3">
