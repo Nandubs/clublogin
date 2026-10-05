@@ -685,8 +685,8 @@ async function selectPaymentChartCell(memberId, month) {
     if (!member) return;
 
     document.getElementById('paymentMonth').value = String(month);
-    paymentsSearchTerm = member.memberName;
-    document.getElementById('paymentSearch').value = member.memberName;
+    paymentsSearchTerm = '';
+    document.getElementById('paymentSearch').value = '';
     paymentsFilter = 'all';
     updatePaymentFilterButtons();
     renderPaymentYearChart();
