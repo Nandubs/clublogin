@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { isValidEmail, normalizeEmail } = require('../services/otp');
 
 const router = express.Router();
 
@@ -62,11 +63,13 @@ router.get('/directory', requireAuth, (req, res) => {
 });
 
 router.get('/', requireAuth, requireAdmin, (req, res) => {
-  const members = db.prepare('SELECT member_id, name, mobile, whatsapp, address, location, blood_group, role FROM members ORDER BY name ASC').all();
+  const members = db.prepare('SELECT member_id, name, mobile, email, email_verified_at, whatsapp, address, location, blood_group, role FROM members ORDER BY name ASC').all();
   res.json(members.map(m => ({
     memberId: m.member_id,
     memberName: m.name,
     mobile: m.mobile,
+    email: m.email,
+    emailVerified: !!m.email_verified_at,
     whatsapp: m.whatsapp,
     address: m.address,
     location: m.location,
@@ -77,9 +80,11 @@ router.get('/', requireAuth, requireAdmin, (req, res) => {
 
 router.post('/', requireAuth, requireAdmin, (req, res) => {
   const { mobile, memberName, password, role, whatsapp, location, bloodGroup } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!mobile || !memberName || !password) {
     return res.status(400).json({ error: 'Mobile number, name and password are required' });
   }
+  if (email && !isValidEmail(email)) return res.status(400).json({ error: 'Enter a valid email address' });
   if (role && !['member', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   if (!location || !db.LOCATIONS.includes(location)) {
     return res.status(400).json({ error: 'Please select a valid location' });
@@ -91,12 +96,16 @@ router.post('/', requireAuth, requireAdmin, (req, res) => {
   const trimmedMobile = mobile.trim();
   const existing = db.prepare('SELECT member_id FROM members WHERE member_id = ? OR mobile = ?').get(trimmedMobile, trimmedMobile);
   if (existing) return res.status(409).json({ error: 'This mobile number is already registered' });
+  if (email) {
+    const emailInUse = db.prepare('SELECT member_id FROM members WHERE lower(email) = ?').get(email);
+    if (emailInUse) return res.status(409).json({ error: 'This email is already listed on another member account' });
+  }
 
   const passwordHash = bcrypt.hashSync(password, 10);
   db.prepare(`
-    INSERT INTO members (member_id, name, mobile, whatsapp, address, location, blood_group, password_hash, role)
-    VALUES (?, ?, ?, ?, '', ?, ?, ?, ?)
-  `).run(trimmedMobile, memberName, trimmedMobile, (whatsapp || '').trim(), location, bloodGroup || null, passwordHash, role || 'member');
+    INSERT INTO members (member_id, name, mobile, email, whatsapp, address, location, blood_group, password_hash, role)
+    VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?)
+  `).run(trimmedMobile, memberName.trim(), trimmedMobile, email || null, (whatsapp || '').trim(), location, bloodGroup || null, passwordHash, role || 'member');
 
   res.status(201).json({ message: 'Member added' });
 });
@@ -109,7 +118,9 @@ router.put('/:id', requireAuth, requireAdmin, (req, res) => {
   if (!member) return res.status(404).json({ error: 'Member not found' });
 
   const { memberName, password, role, whatsapp, location, bloodGroup } = req.body;
+  const email = req.body.email === undefined ? member.email : normalizeEmail(req.body.email);
   if (!memberName || !memberName.trim()) return res.status(400).json({ error: 'Member name cannot be empty' });
+  if (email && !isValidEmail(email)) return res.status(400).json({ error: 'Enter a valid email address' });
   if (role && !['member', 'admin'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   if (!location || !db.LOCATIONS.includes(location)) {
     return res.status(400).json({ error: 'Please select a valid location' });
@@ -117,12 +128,21 @@ router.put('/:id', requireAuth, requireAdmin, (req, res) => {
   if (bloodGroup && !db.BLOOD_GROUPS.includes(bloodGroup)) {
     return res.status(400).json({ error: 'Please select a valid blood group' });
   }
+  if (email && email !== (member.email || '').toLowerCase()) {
+    const emailInUse = db.prepare('SELECT member_id FROM members WHERE lower(email) = ? AND member_id != ?').get(email, memberId);
+    if (emailInUse) return res.status(409).json({ error: 'This email is already listed on another member account' });
+  }
 
   const passwordHash = password && password.trim() ? bcrypt.hashSync(password, 10) : null;
+  const emailChanged = email !== normalizeEmail(member.email);
   db.prepare(`
-    UPDATE members SET name = ?, role = ?, whatsapp = ?, location = ?, blood_group = ?, password_hash = COALESCE(?, password_hash)
+    UPDATE members SET name = ?, role = ?, email = ?, email_verified_at = ?, whatsapp = ?, location = ?, blood_group = ?, password_hash = COALESCE(?, password_hash)
     WHERE member_id = ?
-  `).run(memberName.trim(), role || member.role, (whatsapp || '').trim(), location, bloodGroup || null, passwordHash, memberId);
+  `).run(
+    memberName.trim(), role || member.role, email || null,
+    emailChanged ? null : member.email_verified_at,
+    (whatsapp || '').trim(), location, bloodGroup || null, passwordHash, memberId
+  );
 
   res.json({ message: 'Member updated' });
 });

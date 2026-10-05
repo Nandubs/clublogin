@@ -840,6 +840,7 @@
                             <tr class="border-b border-white/10">
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Email</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Blood Group</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
@@ -858,6 +859,7 @@
                             <tr class="border-b border-white/10">
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Email</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Location</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Blood Group</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Role</th>
@@ -874,7 +876,7 @@
             <!-- Payments Section -->
             <div id="paymentsTab" class="tab-content glass rounded-2xl p-4 sm:p-6 hidden">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-                    <h2 class="text-lg sm:text-xl font-bold text-white">Mark Monthly Payments</h2>
+                    <h2 class="text-lg sm:text-xl font-bold text-white">Monthly Dues</h2>
                     <div class="grid grid-cols-2 gap-2 sm:gap-3">
                         <select id="paymentMonth" class="px-3 sm:px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white text-sm">
                             <option value="1">January</option><option value="2">February</option><option value="3">March</option>
@@ -889,12 +891,16 @@
                 <!-- Collection progress -->
                 <div class="bg-black/30 border border-white/10 rounded-2xl p-4 mb-5">
                     <div class="flex items-center justify-between mb-2.5 text-sm">
-                        <span class="text-gray-300 font-medium"><span id="paymentsPaidCount">0</span> of <span id="paymentsTotalCount">0</span> paid</span>
+                        <span class="text-gray-300 font-medium">Paid members: <span id="paymentsPaidCount">0</span> / <span id="paymentsTotalCount">0</span></span>
                         <span class="text-green-400 font-semibold">₹<span id="paymentsCollected">0</span> collected</span>
                     </div>
                     <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                         <div id="paymentsProgressBar" class="h-full gradient-bg transition-all duration-500" style="width:0%"></div>
                     </div>
+                </div>
+                <div class="rounded-xl border border-orange-500/20 bg-orange-500/5 px-4 py-3 mb-5 text-sm text-gray-300">
+                    <strong class="text-orange-300">How to update dues:</strong>
+                    Choose a month, then tap <strong>Mark as paid</strong> only after you have received that member’s dues. Use <strong>Mark as unpaid</strong> to correct a mistaken entry. This records payment status; it does not charge the member.
                 </div>
 
                 <!-- Search + filter -->
@@ -967,6 +973,7 @@
                             <tr class="border-b border-white/10">
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Email</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">WhatsApp</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Address</th>
                                 <th class="text-center py-3 px-4 text-gray-400 text-sm font-medium">Actions</th>
@@ -985,6 +992,7 @@
                             <tr class="border-b border-white/10">
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Name</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Mobile</th>
+                                <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Email</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">WhatsApp</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Location</th>
                                 <th class="text-left py-3 px-4 text-gray-400 text-sm font-medium">Address</th>
@@ -1061,7 +1069,7 @@
                 <div class="grid grid-cols-3 sm:grid-cols-4 gap-2 sm:gap-3 mb-2" id="paymentCalendar"></div>
                 <div class="flex flex-wrap gap-4 mt-4 text-xs text-gray-400">
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-500"></span> Paid</span>
-                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Not Paid</span>
+                    <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-red-500"></span> Unpaid</span>
                     <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-gray-500"></span> Upcoming</span>
                 </div>
             </div>
@@ -1177,6 +1185,11 @@
                     <input type="text" id="newMemberName" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
                 </div>
                 <div>
+                    <label for="newMemberEmail" class="block text-gray-400 mb-2 text-sm">Email address (optional)</label>
+                    <input type="email" id="newMemberEmail" maxlength="254" autocomplete="email" placeholder="member@example.com" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                    <p class="text-gray-500 text-xs mt-1.5">The member can verify this in their profile to enable email sign-in and password recovery.</p>
+                </div>
+                <div>
                     <label class="block text-gray-400 mb-2 text-sm">Password</label>
                     <input type="password" id="newMemberPassword" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
                 </div>
@@ -1237,6 +1250,11 @@
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Name</label>
                     <input type="text" id="editMemberName" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                </div>
+                <div>
+                    <label for="editMemberEmail" class="block text-gray-400 mb-2 text-sm">Email address (optional)</label>
+                    <input type="email" id="editMemberEmail" maxlength="254" autocomplete="email" placeholder="member@example.com" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                    <p id="editMemberEmailStatus" class="text-gray-500 text-xs mt-1.5"></p>
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Password (Leave blank to keep current)</label>

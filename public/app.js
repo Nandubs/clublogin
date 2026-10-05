@@ -481,6 +481,7 @@ function renderMembersGroup(members, tableId, cardsId, paginationId, groupKey, s
         <tr class="border-b border-white/5 animate-fade-in">
             <td class="py-3 px-4 text-white">${escapeHtml(m.memberId)}</td>
             <td class="py-3 px-4 text-white">${escapeHtml(m.memberName)}</td>
+            <td class="py-3 px-4 text-gray-400">${escapeHtml(m.email || '-')}</td>
             ${showLocationColumn ? `<td class="py-3 px-4">${locationBadge(m.location)}</td>` : ''}
             <td class="py-3 px-4 text-center">${bloodGroupBadge(m.bloodGroup)}</td>
             <td class="py-3 px-4">${memberRoleBadge(m)}</td>
@@ -494,6 +495,7 @@ function renderMembersGroup(members, tableId, cardsId, paginationId, groupKey, s
                 <div class="min-w-0">
                     <p class="text-white font-semibold truncate">${escapeHtml(m.memberName)}</p>
                     <p class="text-gray-500 text-xs">${escapeHtml(m.memberId)}</p>
+                    ${m.email ? `<p class="text-gray-400 text-xs truncate">${escapeHtml(m.email)}${m.emailVerified ? ' · verified' : ' · not verified'}</p>` : '<p class="text-gray-500 text-xs">No email on file</p>'}
                 </div>
                 <div class="flex flex-col items-end gap-1.5 shrink-0">
                     ${memberRoleBadge(m)}
@@ -549,13 +551,14 @@ function initials(name) {
 
 function paymentToggleHtml(r) {
     const isPaid = r.status === 'paid';
-    const icon = isPaid
-        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path>'
-        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12"></path>';
+    const month = document.getElementById('paymentMonth');
+    const monthName = month.options[month.selectedIndex].textContent;
+    const year = document.getElementById('paymentYear').value;
+    const nextAction = isPaid ? 'Mark as unpaid' : 'Mark as paid';
     return `
-        <button data-action="toggle-payment" data-member="${escapeHtml(r.memberId)}" class="px-3.5 py-2 rounded-full text-sm font-semibold transition btn-pop flex items-center gap-1.5 shrink-0 ${isPaid ? 'bg-green-500/15 text-green-400 border border-green-500/30' : 'bg-red-500/15 text-red-400 border border-red-500/30'}">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">${icon}</svg>
-            ${isPaid ? 'Paid' : 'Not Paid'}
+        <span class="px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${isPaid ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}">${isPaid ? 'Paid' : 'Unpaid'}</span>
+        <button data-action="toggle-payment" data-member="${escapeHtml(r.memberId)}" aria-label="${nextAction} for ${escapeHtml(r.memberName)}, ${monthName} ${year}" class="px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold transition btn-pop shrink-0 ${isPaid ? 'bg-white/10 text-gray-200 hover:bg-white/20' : 'bg-green-600 hover:bg-green-500 text-white'}">
+            ${nextAction}
         </button>
     `;
 }
@@ -570,7 +573,7 @@ function paymentRemindHtml(r) {
         `;
     }
     return `
-        <button data-action="remind-payment" data-member="${escapeHtml(r.memberId)}" title="Send payment reminder" class="text-orange-400 hover:text-orange-300 p-2 bg-orange-500/10 rounded-lg transition btn-pop shrink-0">
+        <button data-action="remind-payment" data-member="${escapeHtml(r.memberId)}" aria-label="Send payment reminder to ${escapeHtml(r.memberName)}" title="Send payment reminder" class="text-orange-400 hover:text-orange-300 p-2 bg-orange-500/10 rounded-lg transition btn-pop shrink-0">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
         </button>
     `;
@@ -582,7 +585,7 @@ function paymentRowHtml(r) {
             <div class="w-9 h-9 rounded-full gradient-bg flex items-center justify-center text-white font-bold text-xs shrink-0">${escapeHtml(initials(r.memberName))}</div>
             <div class="flex-1 min-w-0">
                 <p class="text-white font-medium truncate">${escapeHtml(r.memberName)}</p>
-                <p class="text-gray-500 text-xs">₹${r.amount}</p>
+                <p class="text-gray-500 text-xs">Monthly dues: ₹${r.amount}</p>
             </div>
             ${paymentRemindHtml(r)}
             ${paymentToggleHtml(r)}
@@ -643,35 +646,28 @@ async function togglePayment(memberId) {
 
     const previousStatus = record.status;
     const newStatus = previousStatus === 'paid' ? 'not_paid' : 'paid';
-
-    // If this member no longer matches the active filter/search after the
-    // status flips, animate the row sliding out before re-rendering the list
-    // — makes the "moved to the Paid/Unpaid list" transition visible instead
-    // of the row just vanishing on the next render.
-    const rowEl = document.querySelector(`[data-row-member="${CSS.escape(memberId)}"]`);
-    record.status = newStatus;
-    const stillVisible = paymentsMatchesFilter(record);
-
-    if (rowEl && !stillVisible) {
-        rowEl.classList.add('payment-row-exit');
-        setTimeout(() => renderPaymentsList(), 280);
-    } else {
-        renderPaymentsList();
-    }
-    updatePaymentsStats();
+    const monthSelect = document.getElementById('paymentMonth');
+    const monthName = monthSelect.options[monthSelect.selectedIndex].textContent;
+    const message = newStatus === 'paid'
+        ? `Confirm that you received ₹${record.amount} from ${record.memberName} for ${monthName} ${year}. This only updates the record; it does not collect money.`
+        : `Change ${record.memberName}'s ${monthName} ${year} dues status back to unpaid?`;
+    const confirmed = await showConfirm(message, newStatus === 'paid' ? 'Mark dues as paid?' : 'Mark dues as unpaid?');
+    if (!confirmed) return;
 
     try {
         await apiCall(`/payments/${encodeURIComponent(memberId)}`, {
             method: 'PUT',
             body: JSON.stringify({ month, year, status: newStatus })
         });
-        toast(`${record.memberName} marked as ${newStatus === 'paid' ? 'Paid' : 'Not Paid'}`, 'success');
-        loadDashboard();
-    } catch (error) {
-        record.status = previousStatus;
+        record.status = newStatus;
         renderPaymentsList();
         updatePaymentsStats();
+        toast(`${record.memberName} marked as ${newStatus === 'paid' ? 'Paid' : 'Unpaid'}`, 'success');
+        await loadDashboard();
+    } catch (error) {
+        record.status = previousStatus;
         toast(error.message, 'error');
+        await loadPayments();
     }
 }
 
@@ -757,7 +753,7 @@ function printPayments() {
         <tr>
             <td>${escapeHtml(r.memberName)}</td>
             <td>₹${r.amount}</td>
-            <td>${r.status === 'paid' ? 'Paid' : 'Not Paid'}</td>
+            <td>${r.status === 'paid' ? 'Paid' : 'Unpaid'}</td>
         </tr>
     `).join('');
 
@@ -878,6 +874,7 @@ function renderRegistrationsGroup(regs, tableId, cardsId, paginationId, groupKey
         <tr class="border-b border-white/5 animate-fade-in">
             <td class="py-3 px-4 text-white">${escapeHtml(r.name)}</td>
             <td class="py-3 px-4 text-white">${escapeHtml(r.mobile)}</td>
+            <td class="py-3 px-4 text-gray-400">${escapeHtml(r.email || '-')}</td>
             <td class="py-3 px-4 text-gray-400">${escapeHtml(r.whatsapp || '-')}</td>
             ${showLocationColumn ? `<td class="py-3 px-4">${locationBadge(r.location)}</td>` : ''}
             <td class="py-3 px-4 text-gray-400">${escapeHtml(r.address || '-')}</td>
@@ -891,6 +888,7 @@ function renderRegistrationsGroup(regs, tableId, cardsId, paginationId, groupKey
                 <p class="text-white font-semibold">${escapeHtml(r.name)}</p>
                 ${showLocationColumn ? locationBadge(r.location) : ''}
             </div>
+            ${r.email ? `<p class="text-gray-400 text-xs mb-1">Email: ${escapeHtml(r.email)}</p>` : '<p class="text-gray-500 text-xs mb-1">No email provided</p>'}
             <p class="text-gray-500 text-xs mb-1">Mobile: ${escapeHtml(r.mobile)}${r.whatsapp ? ` &middot; WhatsApp: ${escapeHtml(r.whatsapp)}` : ''}</p>
             <p class="text-gray-400 text-sm mb-3">${escapeHtml(r.address || 'No address given')}</p>
             <div class="flex gap-2">${registrationActionsHtml(r)}</div>
@@ -975,6 +973,10 @@ function openEditModal(memberId) {
     currentEditingMember = member;
     document.getElementById('editMemberId').value = member.memberId;
     document.getElementById('editMemberName').value = member.memberName;
+    document.getElementById('editMemberEmail').value = member.email || '';
+    document.getElementById('editMemberEmailStatus').textContent = member.emailVerified
+        ? 'Verified. Changing this email will require the member to verify it again.'
+        : 'Not verified. The member must verify it before email sign-in or recovery.';
     document.getElementById('editMemberRole').value = member.role;
     document.getElementById('editMemberWhatsapp').value = member.whatsapp || '';
     document.getElementById('editMemberLocation').value = member.location || 'India';
@@ -1009,7 +1011,14 @@ async function updateMember() {
     }
 
     try {
-        const updateData = { memberName, role, whatsapp, location, bloodGroup };
+        const updateData = {
+            memberName,
+            email: document.getElementById('editMemberEmail').value,
+            role,
+            whatsapp,
+            location,
+            bloodGroup
+        };
         if (password.trim()) updateData.password = password;
 
         await apiCall(`/members/${memberId}`, {
@@ -1155,7 +1164,7 @@ function renderPaymentCalendar() {
             statusLabel = 'Paid';
         } else {
             statusClass = 'bg-red-500/10 border-red-500/25 text-red-400';
-            statusLabel = 'Not Paid';
+            statusLabel = 'Unpaid';
         }
         const payButton = !isFuture && (!record || record.status !== 'paid')
             ? `<button type="button" data-pay-month="${month}" data-pay-year="${year}" class="mt-2 gradient-bg text-white text-xs font-medium px-3 py-1.5 rounded-lg transition btn-pop">Pay ₹${record && record.amount || 100}</button>`
@@ -1254,7 +1263,7 @@ function renderMemberPaymentsHistory() {
             <td class="py-3 px-4 text-white">${p.year}</td>
             <td class="py-3 px-4 text-center text-white">₹${p.amount || 100}</td>
             <td class="py-3 px-4 text-center">
-                <span class="${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
+                <span class="${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Unpaid'}</span>
             </td>
             <td class="py-3 px-4 text-center">${payButtonHtml(p)}</td>
         </tr>
@@ -1265,7 +1274,7 @@ function renderMemberPaymentsHistory() {
             <div class="min-w-0">
                 <p class="text-white font-semibold">${monthNames[p.month]} ${p.year}</p>
                 <p class="text-gray-500 text-xs">₹${p.amount || 100}</p>
-                <span class="text-sm font-medium ${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Not Paid'}</span>
+                <span class="text-sm font-medium ${p.status === 'paid' ? 'text-green-400' : 'text-red-400'}">${p.status === 'paid' ? 'Paid' : 'Unpaid'}</span>
             </div>
             ${payButtonHtml(p)}
         </div>
@@ -1369,6 +1378,7 @@ document.getElementById('addMemberForm').addEventListener('submit', async (e) =>
             body: JSON.stringify({
                 mobile: document.getElementById('newMemberMobile').value,
                 memberName: document.getElementById('newMemberName').value,
+                email: document.getElementById('newMemberEmail').value,
                 password: document.getElementById('newMemberPassword').value,
                 whatsapp: document.getElementById('newMemberWhatsapp').value,
                 location: document.getElementById('newMemberLocation').value,
