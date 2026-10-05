@@ -207,6 +207,47 @@
         .glass .text-orange-400,
         .glass .text-orange-300 { color: #147d5b; }
         .glass .text-red-400 { color: #c04b4b; }
+        .glass .payment-year-chart {
+            color: #24352d;
+            background: #fff;
+            border-color: #cbd9cf;
+        }
+        .glass .payment-year-chart #paymentYearChartTitle,
+        .glass .payment-year-chart #paymentChartYear { color: #24352d; }
+        .glass .payment-year-chart .payment-chart-name {
+            color: #fff;
+            background: #174b38;
+            border-bottom: 1px solid #36745d;
+        }
+        .glass .payment-year-chart thead th:not(.payment-chart-name) {
+            color: #34483d;
+            background: #e8f1eb;
+        }
+        .glass .payment-year-chart thead th.payment-chart-month-selected {
+            color: #fff;
+            background: #147d5b;
+        }
+        .glass .payment-year-chart .payment-chart-status {
+            border: 1px solid transparent;
+            font-weight: 700;
+        }
+        .glass .payment-year-chart .payment-chart-status.is-paid {
+            color: #14532d;
+            background: #bbf7d0;
+            border-color: #4ade80;
+        }
+        .glass .payment-year-chart .payment-chart-status.is-unpaid {
+            color: #991b1b;
+            background: #fecaca;
+            border-color: #f87171;
+        }
+        .glass .payment-year-chart .payment-chart-status.is-selected {
+            box-shadow: inset 0 0 0 2px #147d5b;
+        }
+        .glass .payment-year-chart .payment-chart-status:hover {
+            filter: brightness(.96);
+        }
+        .glass .payment-year-chart .payment-chart-legend { color: #34483d; }
         .glass input,
         .glass select,
         .glass textarea {
@@ -900,7 +941,7 @@
                         <div id="paymentsProgressBar" class="h-full gradient-bg transition-all duration-500" style="width:0%"></div>
                     </div>
                 </div>
-                <section class="bg-black/20 border border-white/10 rounded-2xl p-3 sm:p-4 mb-5" aria-labelledby="paymentYearChartTitle">
+                <section class="payment-year-chart border rounded-2xl p-3 sm:p-4 mb-5" aria-labelledby="paymentYearChartTitle">
                     <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-3">
                         <div>
                             <h3 id="paymentYearChartTitle" class="text-white font-semibold">Yearly payment overview</h3>
@@ -913,7 +954,7 @@
                         <table class="w-full min-w-[940px] text-sm" aria-label="Yearly member payment status">
                             <thead>
                                 <tr class="bg-white/5">
-                                    <th scope="col" class="payment-chart-name sticky left-0 z-10 bg-[#201710] text-left py-2.5 px-3 text-gray-300 font-semibold">Member</th>
+                                    <th scope="col" class="payment-chart-name sticky left-0 z-10 text-left py-2.5 px-3 font-semibold">Member</th>
                                     <th scope="col" data-payment-chart-month="1" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Jan</th>
                                     <th scope="col" data-payment-chart-month="2" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Feb</th>
                                     <th scope="col" data-payment-chart-month="3" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Mar</th>
@@ -931,7 +972,7 @@
                             <tbody id="paymentYearChartBody"></tbody>
                         </table>
                     </div>
-                    <div class="flex flex-wrap gap-x-5 gap-y-2 mt-3 text-xs text-gray-300" aria-label="Payment status legend">
+                    <div class="payment-chart-legend flex flex-wrap gap-x-5 gap-y-2 mt-3 text-xs" aria-label="Payment status legend">
                         <span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded bg-green-500/70"></span>Paid</span>
                         <span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded bg-red-500/70"></span>Unpaid</span>
                         <span class="text-gray-500">Scroll sideways to see every month.</span>

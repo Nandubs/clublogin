@@ -627,8 +627,10 @@ function renderPaymentYearChart() {
     chartYear.textContent = year;
 
     document.querySelectorAll('[data-payment-chart-month]').forEach(header => {
-        header.classList.toggle('text-orange-300', Number(header.dataset.paymentChartMonth) === selectedMonth);
-        header.classList.toggle('text-gray-400', Number(header.dataset.paymentChartMonth) !== selectedMonth);
+        const isSelected = Number(header.dataset.paymentChartMonth) === selectedMonth;
+        header.classList.toggle('payment-chart-month-selected', isSelected);
+        if (isSelected) header.setAttribute('aria-current', 'date');
+        else header.removeAttribute('aria-current');
     });
 
     if (paymentYearCacheYear !== year || !paymentYearCache) {
@@ -663,7 +665,7 @@ function renderPaymentYearChart() {
                         <button type="button" data-action="select-payment-cell" data-member="${escapeHtml(member.memberId)}" data-month="${month.month}"
                             aria-label="${escapeHtml(member.memberName)}, ${monthName} ${year}: ${status}, ₹${month.amount}. Select to manage this month."
                             title="${monthName} ${year} · ${status} · ₹${month.amount}"
-                            class="w-full min-h-12 rounded-lg px-1 py-1 text-xs font-semibold leading-tight transition hover:ring-2 hover:ring-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300 ${isPaid ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}">
+                            class="payment-chart-status ${isPaid ? 'is-paid' : 'is-unpaid'} ${month.month === selectedMonth ? 'is-selected' : ''} w-full min-h-12 rounded-lg px-1 py-1 text-xs leading-tight transition focus:outline-none focus:ring-2 focus:ring-offset-2">
                             <span class="block">₹${escapeHtml(month.amount)}</span>
                             <span class="block">${status}</span>
                         </button>
