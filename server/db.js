@@ -145,6 +145,18 @@ db.ready = (async () => {
       UNIQUE(member_id, month, year)
     );
 
+    CREATE TABLE IF NOT EXISTS payment_orders (
+      order_id TEXT PRIMARY KEY,
+      member_id TEXT NOT NULL REFERENCES members(member_id) ON DELETE CASCADE,
+      month INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      amount INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending',
+      payment_id TEXT UNIQUE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      paid_at TEXT
+    );
+
     CREATE TABLE IF NOT EXISTS expenses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month INTEGER NOT NULL,

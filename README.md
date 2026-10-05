@@ -62,12 +62,13 @@ The debug APK is written to `android\app\build\outputs\apk\debug\app-debug.apk`.
 
 ### Deploy `brahmastravakkom.in` before release
 
-1. Create a Render Web Service from the GitHub repository and deploy the `main` branch. Use `npm install` as the build command and `npm start` as the start command.
-2. Attach a persistent disk to the service at `/var/data`. Render requires a paid web service for persistent disks. Set `DATA_DIR=/var/data` so the SQLite database survives deploys and restarts.
-3. Set `JWT_SECRET` to a private random value, `INITIAL_ADMIN_PASSWORD` to a strong password you will use for the initial `brahmastra01` login, and `CORS_ORIGINS=https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in` in the hosting environment. Never commit these secrets.
-4. Wait for a successful deployment and test the generated `onrender.com` address. In the Render service settings, add `brahmastravakkom.in` as a custom domain and follow the DNS records Render displays.
-5. In GoDaddy DNS, add the records Render specifies for the root domain and (if desired) `www`. Remove conflicting `AAAA` records, then verify the domain in Render and wait for HTTPS to activate.
-6. Run `npm run android:sync`, build and test the Android app against the live API, then create a signed release build in Android Studio before distribution.
+1. Deploy the GitHub `main` branch to Railway with `npm install` as the build command and `npm start` as the start command.
+2. Attach a Railway volume mounted at `/data` and set `DATA_DIR=/data` so SQLite data persists across deploys and restarts.
+3. Set private `JWT_SECRET` and `INITIAL_ADMIN_PASSWORD` variables. Also set `CORS_ORIGINS=https://localhost,https://brahmastravakkom.in,https://www.brahmastravakkom.in`. Never commit secrets.
+4. Add `www.brahmastravakkom.in` as a Railway custom domain and configure the exact CNAME and TXT records Railway displays in GoDaddy DNS. Verify the domain and HTTPS.
+5. For Razorpay payments, set `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, and `RAZORPAY_WEBHOOK_SECRET` as Railway variables. Start with Razorpay test-mode API keys and enable automatic payment capture in the Razorpay Dashboard. Configure a `payment.captured` webhook at `https://www.brahmastravakkom.in/api/checkout/webhook` and use its generated secret as `RAZORPAY_WEBHOOK_SECRET`.
+6. Test order creation, successful and failed checkout, and payment status updates in test mode before switching to live keys. The app marks dues paid only after server-side Razorpay verification or a valid captured-payment webhook.
+7. Run `npm run android:sync`, build and test the Android app against the live API, then create a signed release build in Android Studio before distribution.
 
 The API URL for native builds is configured in `public/index.html`. If the production API moves to another domain, update that URL and rebuild the Android app. Use a persistent volume and regular backups for the SQLite database.
 

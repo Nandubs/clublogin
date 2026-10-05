@@ -919,34 +919,86 @@ function renderPaymentCalendar() {
             statusClass = 'bg-red-500/10 border-red-500/25 text-red-400';
             statusLabel = 'Not Paid';
         }
+        const payButton = !isFuture && (!record || record.status !== 'paid')
+            ? `<button type="button" data-pay-month="${month}" data-pay-year="${year}" class="mt-2 gradient-bg text-white text-xs font-medium px-3 py-1.5 rounded-lg transition btn-pop">Pay ₹${record && record.amount || 100}</button>`
+            : '';
 
         return `
             <div class="rounded-xl border p-3 text-center animate-fade-in ${statusClass}">
                 <p class="font-semibold text-sm text-white">${monthNames[month]}</p>
                 <p class="text-xs mt-1">${statusLabel}</p>
+                ${payButton}
             </div>
         `;
     }).join('');
 }
 
-const CLUB_UPI_ID = 'kiransathyadevan@okicici';
-const CLUB_UPI_PAYEE_NAME = 'Brahmastra Arts and Sports Club';
+async function startMembershipPayment(month, year) {
+    if (!window.Razorpay) {
+        toast('Secure payment checkout is unavailable. Please refresh and try again.', 'error');
+        return;
+    }
 
-function buildUpiLink(amount, note) {
-    const params = new URLSearchParams({
-        pa: CLUB_UPI_ID,
-        pn: CLUB_UPI_PAYEE_NAME,
-        am: String(amount),
-        cu: 'INR',
-        tn: note
-    });
-    return `upi://pay?${params.toString()}`;
+    try {
+        const order = await apiCall('/checkout/orders', {
+            method: 'POST',
+            body: JSON.stringify({ month, year })
+        });
+        const checkout = new window.Razorpay({
+            key: order.keyId,
+            amount: order.amount,
+            currency: order.currency,
+            name: 'Brahmastra Arts and Sports Club',
+            description: `Membership fee - ${monthNames[month]} ${year}`,
+            order_id: order.orderId,
+            prefill: { name: order.memberName, contact: order.contact },
+            theme: { color: '#ff7a1a' },
+            handler: async (response) => {
+                try {
+                    let result;
+                    for (let attempt = 0; attempt < 5; attempt += 1) {
+                        result = await apiCall('/checkout/verify', {
+                            method: 'POST',
+                            body: JSON.stringify(response)
+                        });
+                        if (result.status !== 'pending') break;
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                    if (result.status === 'paid') {
+                        toast('Payment verified. This month is now paid.', 'success');
+                    } else {
+                        toast('Payment is processing. The calendar will update after confirmation.', 'info');
+                    }
+                    await loadMemberPayments();
+                } catch (error) {
+                    toast(`Payment was received but could not be verified yet: ${error.message}`, 'error');
+                }
+            },
+            modal: {
+                ondismiss: () => {
+                    toast('Payment was not confirmed. You can try again later.', 'info');
+                }
+            }
+        });
+        checkout.on('payment.failed', (response) => {
+            const description = response.error && response.error.description;
+            toast(description || 'Payment failed. Please try again.', 'error');
+        });
+        checkout.open();
+    } catch (error) {
+        toast(error.message, 'error');
+    }
 }
+
+document.getElementById('paymentCalendar').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-pay-month]');
+    if (!button) return;
+    startMembershipPayment(Number(button.dataset.payMonth), Number(button.dataset.payYear));
+});
 
 function payButtonHtml(p) {
     if (p.status === 'paid') return '<span class="text-gray-600 text-sm">&mdash;</span>';
-    const note = `Brahmastra Club fee - ${monthNames[p.month]} ${p.year}`;
-    return `<a href="${buildUpiLink(p.amount || 100, note)}" class="inline-block gradient-bg text-white text-sm font-medium px-3 py-1.5 rounded-lg transition btn-pop">Pay via UPI</a>`;
+    return `<button type="button" data-pay-month="${p.month}" data-pay-year="${p.year}" class="inline-block gradient-bg text-white text-sm font-medium px-3 py-1.5 rounded-lg transition btn-pop">Pay securely</button>`;
 }
 
 let currentMemberProfile = null;
@@ -988,6 +1040,15 @@ document.getElementById('loadMorePaymentsBtn').addEventListener('click', () => {
     memberPaymentsShowAll = true;
     renderMemberPaymentsHistory();
 });
+
+document.getElementById('memberPaymentsTable').addEventListener('click', handlePaymentHistoryClick);
+document.getElementById('memberPaymentsCards').addEventListener('click', handlePaymentHistoryClick);
+
+function handlePaymentHistoryClick(event) {
+    const button = event.target.closest('[data-pay-month]');
+    if (!button) return;
+    startMembershipPayment(Number(button.dataset.payMonth), Number(button.dataset.payYear));
+}
 
 async function loadMemberPayments() {
     try {

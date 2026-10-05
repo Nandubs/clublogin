@@ -5,6 +5,7 @@ const express = require('express');
 const db = require('./db');
 
 const authRoutes = require('./routes/auth');
+const checkoutRoutes = require('./routes/checkout');
 const registrationRoutes = require('./routes/registrations');
 const memberRoutes = require('./routes/members');
 const paymentRoutes = require('./routes/payments');
@@ -38,6 +39,7 @@ async function start() {
   });
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/checkout', checkoutRoutes);
   app.use('/api/registrations', registrationRoutes);
   app.use('/api/members', memberRoutes);
   app.use('/api/payments', paymentRoutes);
