@@ -127,6 +127,7 @@ db.ready = (async () => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
       mobile TEXT NOT NULL,
+      email TEXT,
       whatsapp TEXT,
       address TEXT,
       location TEXT,
@@ -217,6 +218,7 @@ db.ready = (async () => {
   ensureColumn('members', 'location', 'TEXT');
   ensureColumn('members', 'blood_group', 'TEXT');
   ensureColumn('registrations', 'whatsapp', 'TEXT');
+  ensureColumn('registrations', 'email', 'TEXT');
   ensureColumn('registrations', 'location', 'TEXT');
   ensureColumn('registrations', 'blood_group', 'TEXT');
   ensureColumn('expenses', 'rent', 'REAL NOT NULL DEFAULT 0');

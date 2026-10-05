@@ -28,18 +28,23 @@ router.post('/:id/approve', async (req, res) => {
   const memberId = registration.mobile;
   const existing = db.prepare('SELECT member_id FROM members WHERE member_id = ? OR mobile = ?').get(memberId, memberId);
   if (existing) return res.status(409).json({ error: 'This mobile number is already registered as a member' });
+  const existingVerifiedEmail = registration.email && db.prepare(`
+    SELECT member_id FROM members
+    WHERE lower(email) = ? AND email_verified_at IS NOT NULL
+  `).get(registration.email);
+  if (existingVerifiedEmail) return res.status(409).json({ error: 'This email is already verified on a member account' });
 
   const passwordHash = bcrypt.hashSync(password, 10);
 
   const insertMember = db.prepare(`
-    INSERT INTO members (member_id, name, mobile, whatsapp, address, location, blood_group, password_hash, role)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO members (member_id, name, mobile, email, whatsapp, address, location, blood_group, password_hash, role)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const markApproved = db.prepare(`UPDATE registrations SET status = 'approved' WHERE id = ?`);
 
   db.transaction(() => {
     insertMember.run(
-      memberId, registration.name, registration.mobile, registration.whatsapp,
+      memberId, registration.name, registration.mobile, registration.email, registration.whatsapp,
       registration.address, registration.location, registration.blood_group, passwordHash, role || 'member'
     );
     markApproved.run(registration.id);

@@ -64,18 +64,17 @@ router.post('/email/verification/confirm', requireAuth, (req, res) => {
 });
 
 router.post('/password-reset/request', async (req, res) => {
-  const memberId = typeof req.body.memberId === 'string' ? req.body.memberId.trim() : '';
-  if (!memberId || memberId.length > 100) {
-    return res.status(400).json({ error: 'Enter your member ID' });
+  const identifier = typeof (req.body.identifier || req.body.memberId) === 'string'
+    ? (req.body.identifier || req.body.memberId).trim()
+    : '';
+  if (!identifier || identifier.length > 254) {
+    return res.status(400).json({ error: 'Enter your registered email or mobile number' });
   }
   if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-    return res.status(503).json({ error: 'Password reset email is not configured yet. Please contact the club administrator.' });
+    return res.status(503).json({ error: 'Password reset email is not configured yet. Contact the club administrator, then sign in with the temporary password they provide and change it from your profile.' });
   }
 
-  const member = db.prepare(`
-    SELECT member_id, email FROM members
-    WHERE member_id = ? AND email IS NOT NULL AND email_verified_at IS NOT NULL
-  `).get(memberId);
+  const member = findMemberForRecovery(identifier);
 
   if (member) {
     try {
@@ -92,20 +91,19 @@ router.post('/password-reset/request', async (req, res) => {
 });
 
 router.post('/password-reset/confirm', (req, res) => {
-  const memberId = typeof req.body.memberId === 'string' ? req.body.memberId.trim() : '';
+  const identifier = typeof (req.body.identifier || req.body.memberId) === 'string'
+    ? (req.body.identifier || req.body.memberId).trim()
+    : '';
   const code = typeof req.body.code === 'string' ? req.body.code.trim() : '';
   const newPassword = typeof req.body.newPassword === 'string' ? req.body.newPassword : '';
-  if (!memberId || memberId.length > 100 || !/^\d{6}$/.test(code)) {
-    return res.status(400).json({ error: 'Enter your member ID and six-digit code' });
+  if (!identifier || identifier.length > 254 || !/^\d{6}$/.test(code)) {
+    return res.status(400).json({ error: 'Enter your registered email or mobile number and six-digit code' });
   }
   if (newPassword.length < 8 || newPassword.length > 128) {
     return res.status(400).json({ error: 'Password must be between 8 and 128 characters' });
   }
 
-  const member = db.prepare(`
-    SELECT member_id, email FROM members
-    WHERE member_id = ? AND email IS NOT NULL AND email_verified_at IS NOT NULL
-  `).get(memberId);
+  const member = findMemberForRecovery(identifier);
   if (!member) return res.status(400).json({ error: 'Code is invalid, expired, or was already used' });
 
   const challenge = findValidChallenge(member.member_id, member.email, 'password_reset', code);
@@ -127,12 +125,18 @@ router.post('/password-reset/confirm', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
-  const { userId, password } = req.body;
-  if (!userId || !password) return res.status(400).json({ error: 'User ID and password are required' });
+  const userId = typeof req.body.userId === 'string' ? req.body.userId.trim() : '';
+  const password = typeof req.body.password === 'string' ? req.body.password : '';
+  if (!userId || !password) return res.status(400).json({ error: 'Email or mobile number and password are required' });
 
-  const member = db.prepare('SELECT * FROM members WHERE member_id = ?').get(userId);
+  const member = userId.includes('@')
+    ? db.prepare(`
+      SELECT * FROM members
+      WHERE lower(email) = ? AND email_verified_at IS NOT NULL
+    `).get(normalizeEmail(userId))
+    : db.prepare('SELECT * FROM members WHERE member_id = ? OR mobile = ?').get(userId, userId);
   if (!member || !bcrypt.compareSync(password, member.password_hash)) {
-    return res.status(401).json({ error: 'Invalid User ID or password' });
+    return res.status(401).json({ error: 'Invalid email/mobile number or password. Email sign-in requires a verified email address.' });
   }
 
   const token = jwt.sign(
@@ -149,7 +153,9 @@ router.post('/login', (req, res) => {
 
 router.post('/register', (req, res) => {
   const { name, mobile, whatsapp, address, location, bloodGroup } = req.body;
+  const email = normalizeEmail(req.body.email);
   if (!name || !mobile) return res.status(400).json({ error: 'Name and mobile number are required' });
+  if (email && !isValidEmail(email)) return res.status(400).json({ error: 'Enter a valid email address' });
   if (!location || !db.LOCATIONS.includes(location)) {
     return res.status(400).json({ error: 'Please select a valid location' });
   }
@@ -164,26 +170,51 @@ router.post('/register', (req, res) => {
   const existingMember = db.prepare('SELECT member_id FROM members WHERE member_id = ? OR mobile = ?').get(trimmedMobile, trimmedMobile);
   if (existingMember) return res.status(409).json({ error: 'This mobile number is already registered' });
 
+  if (email) {
+    const existingVerifiedEmail = db.prepare(`
+      SELECT member_id FROM members
+      WHERE lower(email) = ? AND email_verified_at IS NOT NULL
+    `).get(email);
+    if (existingVerifiedEmail) return res.status(409).json({ error: 'This email is already verified on a member account' });
+  }
+
   const existingPending = db.prepare(`
     SELECT id FROM registrations WHERE mobile = ? AND status = 'pending'
   `).get(trimmedMobile);
   if (existingPending) return res.status(409).json({ error: 'This mobile number already has a pending registration' });
 
   db.prepare(`
-    INSERT INTO registrations (name, mobile, whatsapp, address, location, blood_group, status)
-    VALUES (?, ?, ?, ?, ?, ?, 'pending')
-  `).run(name.trim(), trimmedMobile, (whatsapp || '').trim(), (address || '').trim(), location, bloodGroup || null);
+    INSERT INTO registrations (name, mobile, email, whatsapp, address, location, blood_group, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+  `).run(name.trim(), trimmedMobile, email || null, (whatsapp || '').trim(), (address || '').trim(), location, bloodGroup || null);
 
   res.status(201).json({ message: 'Registration submitted. An admin will review your request.' });
 });
+
+function findMemberForRecovery(identifier) {
+  if (identifier.includes('@')) {
+    const email = normalizeEmail(identifier);
+    if (!isValidEmail(email)) return null;
+    return db.prepare(`
+      SELECT member_id, email FROM members
+      WHERE lower(email) = ? AND email_verified_at IS NOT NULL
+    `).get(email);
+  }
+
+  return db.prepare(`
+    SELECT member_id, email FROM members
+    WHERE (member_id = ? OR mobile = ?)
+      AND email IS NOT NULL AND email_verified_at IS NOT NULL
+  `).get(identifier, identifier);
+}
 
 router.put('/change-password', requireAuth, (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ error: 'Current and new password are required' });
   }
-  if (newPassword.length < 4) {
-    return res.status(400).json({ error: 'New password must be at least 4 characters' });
+  if (newPassword.length < 8 || newPassword.length > 128) {
+    return res.status(400).json({ error: 'New password must be between 8 and 128 characters' });
   }
 
   const member = db.prepare('SELECT * FROM members WHERE member_id = ?').get(req.user.memberId);

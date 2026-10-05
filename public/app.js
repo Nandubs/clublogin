@@ -342,7 +342,7 @@ document.getElementById('forgotPasswordBtn').addEventListener('click', () => {
     document.getElementById('passwordResetForm').reset();
     document.getElementById('passwordResetError').classList.add('hidden');
     document.getElementById('resetCodeFields').classList.add('hidden');
-    document.getElementById('resetMemberId').value = document.getElementById('userId').value.trim();
+    document.getElementById('resetIdentifier').value = document.getElementById('userId').value.trim();
     openModal('passwordResetModal');
 });
 document.getElementById('closePasswordResetBtn').addEventListener('click', () => closeModal('passwordResetModal'));
@@ -350,9 +350,9 @@ document.getElementById('closePasswordResetBtn').addEventListener('click', () =>
 document.getElementById('requestResetCodeBtn').addEventListener('click', async () => {
     const errorDiv = document.getElementById('passwordResetError');
     errorDiv.classList.add('hidden');
-    const memberId = document.getElementById('resetMemberId').value.trim();
-    if (!memberId) {
-        errorDiv.textContent = 'Enter your member ID first';
+    const identifier = document.getElementById('resetIdentifier').value.trim();
+    if (!identifier) {
+        errorDiv.textContent = 'Enter your registered mobile number or email';
         errorDiv.classList.remove('hidden');
         return;
     }
@@ -360,12 +360,12 @@ document.getElementById('requestResetCodeBtn').addEventListener('click', async (
     try {
         const result = await apiCall('/auth/password-reset/request', {
             method: 'POST',
-            body: JSON.stringify({ memberId })
+            body: JSON.stringify({ identifier })
         });
         document.getElementById('resetCodeMessage').textContent = result.message;
         document.getElementById('resetCodeFields').classList.remove('hidden');
     } catch (error) {
-        errorDiv.textContent = error.message;
+        errorDiv.textContent = `${error.message} If you cannot reset it, contact an administrator for a temporary password, sign in, then use Edit Profile → Change password.`;
         errorDiv.classList.remove('hidden');
     }
 });
@@ -374,7 +374,7 @@ document.getElementById('passwordResetForm').addEventListener('submit', async (e
     event.preventDefault();
     const errorDiv = document.getElementById('passwordResetError');
     errorDiv.classList.add('hidden');
-    const memberId = document.getElementById('resetMemberId').value.trim();
+    const identifier = document.getElementById('resetIdentifier').value.trim();
     const code = document.getElementById('resetOtp').value.trim();
     const newPassword = document.getElementById('resetNewPassword').value;
     const confirmPassword = document.getElementById('resetConfirmPassword').value;
@@ -398,13 +398,13 @@ document.getElementById('passwordResetForm').addEventListener('submit', async (e
     try {
         const result = await apiCall('/auth/password-reset/confirm', {
             method: 'POST',
-            body: JSON.stringify({ memberId, code, newPassword })
+            body: JSON.stringify({ identifier, code, newPassword })
         });
         closeModal('passwordResetModal');
         document.getElementById('passwordResetForm').reset();
         toast(result.message, 'success');
     } catch (error) {
-        errorDiv.textContent = error.message;
+        errorDiv.textContent = `${error.message} If you cannot reset it, contact an administrator for a temporary password, sign in, then use Edit Profile → Change password.`;
         errorDiv.classList.remove('hidden');
     }
 });
@@ -420,6 +420,7 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
             body: JSON.stringify({
                 name: document.getElementById('regName').value,
                 mobile: document.getElementById('regMobile').value,
+                email: document.getElementById('regEmail').value,
                 whatsapp: document.getElementById('regWhatsapp').value,
                 location: document.getElementById('regLocation').value,
                 bloodGroup: document.getElementById('regBloodGroup').value,
@@ -946,6 +947,8 @@ function openApproveModal(id) {
     currentApprovingRegistration = registration;
     document.getElementById('approveRegName').textContent = registration.name;
     document.getElementById('approveRegMobile').textContent = registration.mobile;
+    document.getElementById('approveRegEmail').textContent = registration.email || 'Not provided';
+    document.getElementById('approveRegEmailContainer').classList.toggle('hidden', !registration.email);
     document.getElementById('approvePassword').value = '';
     document.getElementById('approveRole').value = 'member';
     openModal('approveRegistrationModal');
@@ -1596,8 +1599,8 @@ function openEditProfileModal() {
     document.getElementById('profileName').value = currentMemberProfile.memberName;
     document.getElementById('profileEmail').value = currentMemberProfile.email || '';
     document.getElementById('profileEmailStatus').textContent = currentMemberProfile.emailVerified
-        ? 'Verified email — available for password recovery.'
-        : 'Not verified yet. Verify this address so you can reset your password.';
+        ? 'Verified email — available for sign-in and password recovery.'
+        : 'Not verified yet. Verify this address to enable email sign-in and password recovery.';
     document.getElementById('profileEmailCodeFields').classList.add('hidden');
     document.getElementById('profileEmailCode').value = '';
     document.getElementById('profileWhatsapp').value = currentMemberProfile.whatsapp || '';
@@ -1607,6 +1610,10 @@ function openEditProfileModal() {
     openModal('editProfileModal');
 }
 document.getElementById('editProfileBtn').addEventListener('click', openEditProfileModal);
+document.getElementById('profileChangePasswordBtn').addEventListener('click', () => {
+    closeModal('editProfileModal');
+    openChangePasswordModal();
+});
 
 document.getElementById('sendEmailVerificationBtn').addEventListener('click', async () => {
     const email = document.getElementById('profileEmail').value.trim();
@@ -1644,8 +1651,8 @@ document.getElementById('verifyProfileEmailBtn').addEventListener('click', async
         currentMemberProfile.emailVerified = true;
         document.getElementById('profileEmail').value = result.email;
         document.getElementById('profileEmailCodeFields').classList.add('hidden');
-        status.textContent = 'Email verified — available for password recovery.';
-        toast('Recovery email verified successfully!', 'success');
+        status.textContent = 'Verified email — available for sign-in and password recovery.';
+        toast('Email verified. You can now sign in and reset your password with this email.', 'success');
     } catch (error) {
         status.textContent = error.message;
     }
@@ -1705,6 +1712,11 @@ document.getElementById('changePasswordForm').addEventListener('submit', async (
     const newPassword = document.getElementById('newPasswordInput').value;
     const confirmPassword = document.getElementById('confirmPasswordInput').value;
 
+    if (newPassword.length < 8 || newPassword.length > 128) {
+        errorDiv.textContent = 'New password must be between 8 and 128 characters';
+        errorDiv.classList.remove('hidden');
+        return;
+    }
     if (newPassword !== confirmPassword) {
         errorDiv.textContent = 'New passwords do not match';
         errorDiv.classList.remove('hidden');

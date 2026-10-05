@@ -546,11 +546,7 @@
     <div id="loginPage" class="overlay-flex min-h-screen flex items-center justify-center p-4">
         <div class="w-full max-w-md animate-fade-in-up">
             <div class="text-center mb-8">
-                <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-bg mb-4 pulse-badge shadow-lg shadow-orange-500/20">
-                    <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                </div>
+                <img src="club-logo.jpeg" alt="Brahmastra Arts and Sports Club logo" class="w-20 h-20 object-contain rounded-2xl mb-4 shadow-lg shadow-orange-500/20">
                 <h1 class="text-2xl sm:text-3xl font-extrabold text-white mb-1 tracking-tight">Brahmastra Arts &amp; Sports Club</h1>
                 <p class="gradient-text font-semibold text-sm tracking-wide uppercase">Vakkom &middot; Member Portal</p>
 
@@ -605,8 +601,8 @@
 
                 <form id="loginForm" class="space-y-4">
                     <div>
-                        <label for="userId" class="block text-sm font-medium text-gray-300 mb-2">Mobile number or member ID</label>
-                        <input type="text" id="userId" required autocomplete="username" inputmode="tel" placeholder="Enter your registered mobile" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
+                        <label for="userId" class="block text-sm font-medium text-gray-300 mb-2">Email address or mobile number</label>
+                        <input type="text" id="userId" required autocomplete="username" inputmode="email" placeholder="Enter your verified email or mobile" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
                     </div>
                     <div>
                         <label for="password" class="block text-sm font-medium text-gray-300 mb-2">Password</label>
@@ -636,13 +632,14 @@
     <div id="passwordResetModal" class="overlay-flex hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
         <div class="glass rounded-2xl p-6 sm:p-8 w-full max-w-md animate-scale-in">
             <h2 class="text-xl font-bold text-white mb-2">Reset your password</h2>
-            <p class="text-sm text-gray-400 mb-5">We’ll send a one-time code to the verified email on your member account.</p>
+            <p class="text-sm text-gray-400 mb-5">Enter your registered mobile number or verified email. We’ll send a one-time code to the verified email on your account.</p>
             <form id="passwordResetForm" class="space-y-4">
                 <div>
-                    <label for="resetMemberId" class="block text-gray-300 text-sm mb-2">Member ID / registered mobile</label>
-                    <input id="resetMemberId" type="text" required maxlength="100" autocomplete="username" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white">
+                    <label for="resetIdentifier" class="block text-gray-300 text-sm mb-2">Registered mobile number or email</label>
+                    <input id="resetIdentifier" type="text" required maxlength="254" autocomplete="username" inputmode="email" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white">
                 </div>
                 <button id="requestResetCodeBtn" type="button" class="w-full bg-white/10 hover:bg-white/20 py-3 rounded-xl text-white font-medium">Send reset code</button>
+                <p class="text-xs text-gray-500">Can’t access your verified email? Contact an administrator for a temporary password, sign in, then change it from Edit Profile.</p>
                 <div id="resetCodeFields" class="hidden space-y-4">
                     <p id="resetCodeMessage" class="text-sm text-emerald-300"></p>
                     <div>
@@ -705,7 +702,11 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">Mobile Number</label>
                         <input type="tel" id="regMobile" required class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
-                        <p class="text-gray-500 text-xs mt-1.5">This becomes your login ID once approved.</p>
+                        <p class="text-gray-500 text-xs mt-1.5">Your mobile remains your member ID. Verify your email in your profile to use it for sign-in and password recovery.</p>
+                    </div>
+                    <div>
+                        <label for="regEmail" class="block text-sm font-medium text-gray-300 mb-2">Email Address (optional)</label>
+                        <input type="email" id="regEmail" maxlength="254" autocomplete="email" placeholder="you@example.com" class="w-full px-4 py-3 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 focus:outline-none transition">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-300 mb-2">WhatsApp Number</label>
@@ -1436,6 +1437,11 @@
                     <label class="block text-gray-400 mb-2 text-sm">Login ID (mobile number)</label>
                     <p id="approveRegMobile" class="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-gray-300"></p>
                 </div>
+                <div id="approveRegEmailContainer" class="hidden">
+                    <label class="block text-gray-400 mb-2 text-sm">Registration email</label>
+                    <p id="approveRegEmail" class="w-full px-4 py-2.5 bg-black/20 border border-white/10 rounded-xl text-gray-300 break-all"></p>
+                    <p class="text-gray-500 text-xs mt-1">The member must verify this email from their profile before using email sign-in or password recovery.</p>
+                </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Password</label>
                     <input type="password" id="approvePassword" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
@@ -1469,7 +1475,7 @@
                     <input type="text" id="profileName" required class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
                 </div>
                 <div class="space-y-2">
-                    <label for="profileEmail" class="block text-gray-400 text-sm">Email for password recovery</label>
+                    <label for="profileEmail" class="block text-gray-400 text-sm">Email for sign-in and password recovery</label>
                     <input type="email" id="profileEmail" maxlength="254" autocomplete="email" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition" placeholder="you@example.com">
                     <p id="profileEmailStatus" class="text-xs text-gray-400"></p>
                     <button id="sendEmailVerificationBtn" type="button" class="text-sm text-orange-400 hover:text-orange-300">Send verification code</button>
@@ -1478,6 +1484,11 @@
                         <input type="text" id="profileEmailCode" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white">
                         <button id="verifyProfileEmailBtn" type="button" class="text-sm text-orange-400 hover:text-orange-300">Verify email</button>
                     </div>
+                </div>
+                <div class="rounded-xl border border-white/10 bg-black/20 p-3">
+                    <p class="text-sm text-gray-300">Need to change your password?</p>
+                    <p class="text-xs text-gray-500 mt-1">If an administrator gave you a temporary password, sign in with it and use it as your current password below.</p>
+                    <button id="profileChangePasswordBtn" type="button" class="mt-2 text-sm text-orange-400 hover:text-orange-300">Change password</button>
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">WhatsApp Number</label>
@@ -1533,7 +1544,7 @@
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">New Password</label>
-                    <input type="password" id="newPasswordInput" required autocomplete="new-password" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
+                    <input type="password" id="newPasswordInput" required minlength="8" maxlength="128" autocomplete="new-password" class="w-full px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-white focus:border-orange-500 focus:outline-none transition">
                 </div>
                 <div>
                     <label class="block text-gray-400 mb-2 text-sm">Confirm New Password</label>
@@ -1568,7 +1579,7 @@
 
     <script>
         window.APP_CONFIG = {
-            apiBaseUrl: window.Capacitor ? 'https://brahmastravakkom.in/api' : '/api'
+            apiBaseUrl: window.Capacitor ? 'https://www.brahmastravakkom.in/api' : '/api'
         };
     </script>
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
