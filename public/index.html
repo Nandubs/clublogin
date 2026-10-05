@@ -116,6 +116,8 @@
         }
 
         table { border-collapse: collapse; }
+        .payment-chart-name { min-width: 10rem; }
+        .payment-chart-cell { min-width: 4.5rem; }
         ::-webkit-scrollbar { height: 6px; width: 6px; }
         ::-webkit-scrollbar-thumb { background: rgba(255,122,26,0.35); border-radius: 999px; }
 
@@ -898,6 +900,43 @@
                         <div id="paymentsProgressBar" class="h-full gradient-bg transition-all duration-500" style="width:0%"></div>
                     </div>
                 </div>
+                <section class="bg-black/20 border border-white/10 rounded-2xl p-3 sm:p-4 mb-5" aria-labelledby="paymentYearChartTitle">
+                    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-3">
+                        <div>
+                            <h3 id="paymentYearChartTitle" class="text-white font-semibold">Yearly payment overview</h3>
+                            <p class="text-gray-400 text-xs mt-1">Each cell shows one member’s dues status for that month. Select a cell to manage it.</p>
+                        </div>
+                        <span class="text-gray-400 text-xs">Selected year: <strong id="paymentChartYear" class="text-white"></strong></span>
+                    </div>
+                    <p id="paymentChartState" class="hidden text-gray-400 text-sm py-5 text-center" role="status"></p>
+                    <div id="paymentChartScroll" class="overflow-x-auto rounded-xl">
+                        <table class="w-full min-w-[940px] text-sm" aria-label="Yearly member payment status">
+                            <thead>
+                                <tr class="bg-white/5">
+                                    <th scope="col" class="payment-chart-name sticky left-0 z-10 bg-[#201710] text-left py-2.5 px-3 text-gray-300 font-semibold">Member</th>
+                                    <th scope="col" data-payment-chart-month="1" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Jan</th>
+                                    <th scope="col" data-payment-chart-month="2" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Feb</th>
+                                    <th scope="col" data-payment-chart-month="3" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Mar</th>
+                                    <th scope="col" data-payment-chart-month="4" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Apr</th>
+                                    <th scope="col" data-payment-chart-month="5" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">May</th>
+                                    <th scope="col" data-payment-chart-month="6" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Jun</th>
+                                    <th scope="col" data-payment-chart-month="7" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Jul</th>
+                                    <th scope="col" data-payment-chart-month="8" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Aug</th>
+                                    <th scope="col" data-payment-chart-month="9" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Sep</th>
+                                    <th scope="col" data-payment-chart-month="10" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Oct</th>
+                                    <th scope="col" data-payment-chart-month="11" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Nov</th>
+                                    <th scope="col" data-payment-chart-month="12" class="payment-chart-cell py-2.5 px-2 text-gray-400 font-semibold">Dec</th>
+                                </tr>
+                            </thead>
+                            <tbody id="paymentYearChartBody"></tbody>
+                        </table>
+                    </div>
+                    <div class="flex flex-wrap gap-x-5 gap-y-2 mt-3 text-xs text-gray-300" aria-label="Payment status legend">
+                        <span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded bg-green-500/70"></span>Paid</span>
+                        <span class="inline-flex items-center gap-2"><span class="w-3 h-3 rounded bg-red-500/70"></span>Unpaid</span>
+                        <span class="text-gray-500">Scroll sideways to see every month.</span>
+                    </div>
+                </section>
                 <div class="rounded-xl border border-orange-500/20 bg-orange-500/5 px-4 py-3 mb-5 text-sm text-gray-300">
                     <strong class="text-orange-300">How to update dues:</strong>
                     Choose a month, then tap <strong>Mark as paid</strong> only after you have received that member’s dues. Use <strong>Mark as unpaid</strong> to correct a mistaken entry. This records payment status; it does not charge the member.

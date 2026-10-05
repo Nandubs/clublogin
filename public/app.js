@@ -542,8 +542,11 @@ function handleMemberAction(e) {
 });
 
 let paymentsCache = [];
+let paymentYearCache = null;
+let paymentYearCacheYear = null;
 let paymentsFilter = 'not_paid';
 let paymentsSearchTerm = '';
+const paymentMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 function initials(name) {
     return (name || '').split(' ').filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join('');
@@ -614,6 +617,99 @@ function renderPaymentsList() {
     });
 }
 
+function renderPaymentYearChart() {
+    const year = document.getElementById('paymentYear').value;
+    const chartYear = document.getElementById('paymentChartYear');
+    const chartState = document.getElementById('paymentChartState');
+    const chartScroll = document.getElementById('paymentChartScroll');
+    const chartBody = document.getElementById('paymentYearChartBody');
+    const selectedMonth = Number(document.getElementById('paymentMonth').value);
+    chartYear.textContent = year;
+
+    document.querySelectorAll('[data-payment-chart-month]').forEach(header => {
+        header.classList.toggle('text-orange-300', Number(header.dataset.paymentChartMonth) === selectedMonth);
+        header.classList.toggle('text-gray-400', Number(header.dataset.paymentChartMonth) !== selectedMonth);
+    });
+
+    if (paymentYearCacheYear !== year || !paymentYearCache) {
+        chartBody.innerHTML = '';
+        chartScroll.classList.add('hidden');
+        chartState.textContent = `Loading payment statuses for ${year}…`;
+        chartState.classList.remove('hidden');
+        return;
+    }
+
+    const term = paymentsSearchTerm.trim().toLowerCase();
+    const members = paymentYearCache.members.filter(member => member.memberName.toLowerCase().includes(term));
+    if (members.length === 0) {
+        chartBody.innerHTML = '';
+        chartScroll.classList.add('hidden');
+        chartState.textContent = term ? 'No members match your search.' : 'No members to show for this year.';
+        chartState.classList.remove('hidden');
+        return;
+    }
+
+    chartState.classList.add('hidden');
+    chartScroll.classList.remove('hidden');
+    chartBody.innerHTML = members.map(member => `
+        <tr class="border-b border-white/5">
+            <th scope="row" class="payment-chart-name sticky left-0 z-[1] bg-[#201710] py-2 px-3 text-left text-white font-medium">${escapeHtml(member.memberName)}</th>
+            ${member.months.map(month => {
+                const isPaid = month.status === 'paid';
+                const status = isPaid ? 'Paid' : 'Unpaid';
+                const monthName = paymentMonthNames[month.month - 1];
+                return `
+                    <td class="payment-chart-cell p-1">
+                        <button type="button" data-action="select-payment-cell" data-member="${escapeHtml(member.memberId)}" data-month="${month.month}"
+                            aria-label="${escapeHtml(member.memberName)}, ${monthName} ${year}: ${status}, ₹${month.amount}. Select to manage this month."
+                            title="${monthName} ${year} · ${status} · ₹${month.amount}"
+                            class="w-full min-h-12 rounded-lg px-1 py-1 text-xs font-semibold leading-tight transition hover:ring-2 hover:ring-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-300 ${isPaid ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'}">
+                            <span class="block">₹${escapeHtml(month.amount)}</span>
+                            <span class="block">${status}</span>
+                        </button>
+                    </td>
+                `;
+            }).join('')}
+        </tr>
+    `).join('');
+
+    chartBody.querySelectorAll('[data-action="select-payment-cell"]').forEach(button => {
+        button.addEventListener('click', () => selectPaymentChartCell(button.dataset.member, Number(button.dataset.month)));
+    });
+}
+
+async function selectPaymentChartCell(memberId, month) {
+    const member = paymentYearCache?.members.find(item => item.memberId === memberId);
+    if (!member) return;
+
+    document.getElementById('paymentMonth').value = String(month);
+    paymentsSearchTerm = member.memberName;
+    document.getElementById('paymentSearch').value = member.memberName;
+    paymentsFilter = 'all';
+    updatePaymentFilterButtons();
+    renderPaymentYearChart();
+    await loadPayments();
+    const paymentRow = Array.from(document.querySelectorAll('#paymentsList [data-row-member]'))
+        .find(row => row.dataset.rowMember === memberId);
+    paymentRow?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function updatePaymentFilterButtons() {
+    document.querySelectorAll('.payment-filter-btn').forEach(button => {
+        const isActive = button.dataset.filter === paymentsFilter;
+        button.classList.toggle('bg-orange-500', isActive);
+        button.classList.toggle('text-white', isActive);
+        button.classList.toggle('bg-white/10', !isActive);
+        button.classList.toggle('text-gray-300', !isActive);
+    });
+}
+
+function setPaymentsFilter(filter) {
+    paymentsFilter = filter;
+    updatePaymentFilterButtons();
+    renderPaymentsList();
+}
+
 function updatePaymentsStats() {
     const total = paymentsCache.length;
     const paid = paymentsCache.filter(r => r.status === 'paid').length;
@@ -628,6 +724,7 @@ function updatePaymentsStats() {
 async function loadPayments() {
     const month = parseInt(document.getElementById('paymentMonth').value);
     const year = parseInt(document.getElementById('paymentYear').value);
+    renderPaymentYearChart();
 
     try {
         paymentsCache = await apiCall(`/payments?month=${month}&year=${year}`);
@@ -635,6 +732,24 @@ async function loadPayments() {
         updatePaymentsStats();
     } catch (error) {
         console.error('Load payments error:', error);
+    }
+
+    if (paymentYearCacheYear !== String(year)) {
+        paymentYearCacheYear = null;
+        paymentYearCache = null;
+        renderPaymentYearChart();
+        try {
+            const result = await apiCall(`/payments/year/${year}`);
+            if (document.getElementById('paymentYear').value !== String(year)) return;
+            paymentYearCache = result;
+            paymentYearCacheYear = String(year);
+            renderPaymentYearChart();
+        } catch (error) {
+            console.error('Load yearly payment chart error:', error);
+            document.getElementById('paymentChartState').textContent = 'Unable to load the yearly payment overview. Please try again.';
+            document.getElementById('paymentChartState').classList.remove('hidden');
+            document.getElementById('paymentChartScroll').classList.add('hidden');
+        }
     }
 }
 
@@ -660,7 +775,10 @@ async function togglePayment(memberId) {
             body: JSON.stringify({ month, year, status: newStatus })
         });
         record.status = newStatus;
+        const yearMember = paymentYearCache?.members.find(member => member.memberId === memberId);
+        if (yearMember) yearMember.months[month - 1].status = newStatus;
         renderPaymentsList();
+        renderPaymentYearChart();
         updatePaymentsStats();
         toast(`${record.memberName} marked as ${newStatus === 'paid' ? 'Paid' : 'Unpaid'}`, 'success');
         await loadDashboard();
@@ -674,18 +792,12 @@ async function togglePayment(memberId) {
 document.getElementById('paymentSearch').addEventListener('input', (e) => {
     paymentsSearchTerm = e.target.value;
     renderPaymentsList();
+    renderPaymentYearChart();
 });
 
 document.querySelectorAll('.payment-filter-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        paymentsFilter = btn.dataset.filter;
-        document.querySelectorAll('.payment-filter-btn').forEach(b => {
-            b.classList.toggle('bg-orange-500', b === btn);
-            b.classList.toggle('text-white', b === btn);
-            b.classList.toggle('bg-white/10', b !== btn);
-            b.classList.toggle('text-gray-300', b !== btn);
-        });
-        renderPaymentsList();
+        setPaymentsFilter(btn.dataset.filter);
     });
 });
 
@@ -1591,7 +1703,11 @@ document.getElementById('addExpenseBtn').addEventListener('click', () => openMod
 document.getElementById('printPaymentsBtn').addEventListener('click', printPayments);
 document.getElementById('remindAllBtn').addEventListener('click', remindAllUnpaid);
 document.getElementById('paymentMonth').addEventListener('change', loadPayments);
-document.getElementById('paymentYear').addEventListener('change', loadPayments);
+document.getElementById('paymentYear').addEventListener('change', () => {
+    paymentYearCache = null;
+    paymentYearCacheYear = null;
+    loadPayments();
+});
 document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('memberLogoutBtn').addEventListener('click', logout);
 document.getElementById('calendarYear').addEventListener('change', renderPaymentCalendar);

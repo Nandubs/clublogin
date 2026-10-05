@@ -9,6 +9,44 @@ router.use(requireAuth, requireAdmin);
 const MONTH_NAMES = ['', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const MAIN_ADMIN = 'brahmastra01';
 
+router.get('/year/:year', (req, res) => {
+  const year = parseInt(req.params.year, 10);
+  if (!year || String(year) !== req.params.year) {
+    return res.status(400).json({ error: 'A valid year is required' });
+  }
+
+  const rows = db.prepare(`
+    SELECT m.member_id, m.name, p.month, p.amount, p.status
+    FROM members m
+    LEFT JOIN payments p ON p.member_id = m.member_id AND p.year = ?
+    WHERE m.member_id != ?
+    ORDER BY m.name COLLATE NOCASE ASC, p.month ASC
+  `).all(year, MAIN_ADMIN);
+
+  const members = new Map();
+  for (const row of rows) {
+    if (!members.has(row.member_id)) {
+      members.set(row.member_id, {
+        memberId: row.member_id,
+        memberName: row.name,
+        months: Array.from({ length: 12 }, (_, index) => ({
+          month: index + 1,
+          amount: 100,
+          status: 'not_paid'
+        }))
+      });
+    }
+
+    if (row.month) {
+      const month = members.get(row.member_id).months[row.month - 1];
+      month.amount = row.amount || 100;
+      month.status = row.status || 'not_paid';
+    }
+  }
+
+  res.json({ year, members: Array.from(members.values()) });
+});
+
 router.get('/', (req, res) => {
   const month = parseInt(req.query.month, 10);
   const year = parseInt(req.query.year, 10);
