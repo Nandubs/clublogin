@@ -40,6 +40,51 @@ function locationBadge(location) {
     return `<span class="px-2 py-0.5 rounded-full text-xs bg-white/10 text-gray-300">${escapeHtml(location || 'Unspecified')}</span>`;
 }
 
+// ==================== PUBLIC CLUB PHOTO GALLERY ====================
+const clubPhotos = Array.from({ length: 17 }, (_, index) => `club-gallery/${index + 1}.jpeg`);
+let currentClubPhotoIndex = 0;
+
+document.getElementById('clubPhotoGallery').innerHTML = clubPhotos.map((src, index) => `
+    <button type="button" data-club-photo="${index}" aria-label="View club photo ${index + 1}">
+        <img src="${src}" alt="Brahmastra Club photo ${index + 1}" loading="${index < 4 ? 'eager' : 'lazy'}">
+    </button>
+`).join('');
+
+function showClubPhoto(index) {
+    currentClubPhotoIndex = (index + clubPhotos.length) % clubPhotos.length;
+    const image = document.getElementById('clubPhotoViewerImage');
+    image.src = clubPhotos[currentClubPhotoIndex];
+    image.alt = `Brahmastra Club photo ${currentClubPhotoIndex + 1}`;
+    document.getElementById('clubPhotoViewerCaption').textContent =
+        `Club photo ${currentClubPhotoIndex + 1} of ${clubPhotos.length}`;
+}
+
+document.getElementById('clubPhotoGallery').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-club-photo]');
+    if (!button) return;
+    showClubPhoto(Number(button.dataset.clubPhoto));
+    document.getElementById('clubPhotoViewer').showModal();
+});
+
+document.getElementById('clubPhotoPrevious').addEventListener('click', () => {
+    showClubPhoto(currentClubPhotoIndex - 1);
+});
+document.getElementById('clubPhotoNext').addEventListener('click', () => {
+    showClubPhoto(currentClubPhotoIndex + 1);
+});
+document.getElementById('clubPhotoViewerClose').addEventListener('click', () => {
+    document.getElementById('clubPhotoViewer').close();
+});
+document.getElementById('clubPhotoViewer').addEventListener('click', (event) => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+});
+document.addEventListener('keydown', (event) => {
+    const viewer = document.getElementById('clubPhotoViewer');
+    if (!viewer.open) return;
+    if (event.key === 'ArrowLeft') showClubPhoto(currentClubPhotoIndex - 1);
+    if (event.key === 'ArrowRight') showClubPhoto(currentClubPhotoIndex + 1);
+});
+
 // ==================== PAGINATION ====================
 const PAGE_SIZE = 10;
 const paginationState = {};

@@ -2,6 +2,8 @@
 
 Membership and payment management app for Brahmastra Arts & Sports Club.
 
+The public login page displays the 17 photos from `public/club-gallery` before sign-in. Selecting a thumbnail opens a photo viewer; keep only images approved for public viewing in that folder.
+
 ## Run the web app
 
 Requires Node.js 20 or newer.
